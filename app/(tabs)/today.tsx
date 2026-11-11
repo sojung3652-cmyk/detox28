@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
 import { Ring } from '../../components/Ring';
 import { Badge, Button, Card, CardHeader, CheckRow, T, tapFeedback } from '../../components/ui';
-import { POST_FAST_NOTE, menusOf, snacksForWeek } from '../../data/menus';
+import { POST_FAST_NOTE, menusFor } from '../../data/menus';
 import { DAILY_ROUTINE, DINNER_LABEL, FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, WATER_GOAL } from '../../data/program';
 import { pickTime, timeKo } from '../../lib/pickers';
 import {
@@ -299,7 +299,8 @@ function NextUpCard({ day, now, inputs }: { day: number; now: Date; inputs: Fast
   // Post-fast meal if a fast ends within the next 3h or ended within the last 3h; otherwise a snack.
   const nearEnd = fasts.find((f) => Math.abs(f.end.getTime() - now.getTime()) < 3 * 3600000);
   const dk = dateKey(now);
-  const pick = nearEnd ? seededPick(menusOf('postfast'), dk, 1)[0] : seededPick(snacksForWeek(weekPlan(day).week), dk, 1)[0];
+  const week = weekPlan(day).week;
+  const pick = nearEnd ? seededPick(menusFor('postfast', Math.max(2, week)), dk, 1)[0] : seededPick(menusFor('snack', week), dk, 1)[0];
   return (
     <Card style={[s.half, { flexBasis: 150 * textScale() }]}>
       <CardHeader title="다음 할 일" icon="spark" />
