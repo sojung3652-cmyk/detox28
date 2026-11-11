@@ -1,15 +1,16 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { BodyLog, EMPTY, Persisted, Settings, loadState, normalize, saveState } from './persist';
-import { dateKey } from './plan';
-import { cancelAll, rescheduleAll, scheduledCount } from './notifications';
+import { dateKey, parseDateKey, programDay } from './plan';
+import { cancelAlarm, cancelAll, rescheduleAll, scheduledCount, sendAllKindsPreview, syncStreakAlarms } from './notifications';
+import { InboxEntry, Letter, letterRef, loadOutbox, moveDue, saveOutbox } from './letters';
 import { refreshWidget } from './widgetBridge';
 import { ParsedAction, applyAction } from './actions';
 import type { ThemePref } from '../theme';
 
 export type { Settings, BodyLog, Persisted } from './persist';
 
-/** Debug tools ("날짜 바꿔보기", 테스트 알림). __DEV__ is false in EAS APK builds, so they disappear there. */
+/** Debug tools ("날짜 바꿔보기", 모든 알람 미리 보내기). __DEV__ is false in EAS APK builds, so they disappear there. */
 export const SHOW_DEBUG = __DEV__;
 
 type Ctx = Persisted & {
@@ -24,6 +25,10 @@ type Ctx = Persisted & {
   stopFast: (id: string) => Promise<void>;
   toggleShopping: (week: number, id: string) => void;
   recordAction: (a: ParsedAction) => void;
+  /** Moves letters whose time has passed from the outbox into the inbox. */
+  syncInbox: () => Promise<void>;
+  markLetters: (refs: string[], patch: Partial<Pick<InboxEntry, 'opened' | 'popped'>>) => void;
+  previewAllKinds: () => Promise<void>;
   markCelebrated: (n: number) => void;
   setTheme: (t: ThemePref) => void;
   setWeightUnit: (u: 'lb' | 'kg') => void;
@@ -49,17 +54,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
+  const syncInbox = useCallback(async () => {
+    const ob = await loadOutbox();
+    const r = moveDue(stateRef.current.inbox, ob, Date.now()); // real time, not the debug offset
+    if (r.added) update((p) => ({ ...p, inbox: moveDue(p.inbox, ob, Date.now()).inbox }));
+    if (r.outbox.length !== ob.length) await saveOutbox(r.outbox);
+  }, [update]);
+
   const reschedule = useCallback(
     async (s: Persisted) => {
       if (!s.settings) return;
       try {
-        await rescheduleAll(s);
+        await syncInbox(); // due letters must reach the inbox before the outbox is rewritten
+        await rescheduleAll({ ...s, inbox: stateRef.current.inbox });
         update((p) => ({ ...p, lastScheduledOn: dateKey(new Date()) }));
       } catch (e) {
         console.warn('reschedule failed', e);
       }
     },
-    [update],
+    [update, syncInbox],
   );
 
   useEffect(() => {
@@ -76,6 +89,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const fresh = await loadState();
       stateRef.current = fresh;
       setState(fresh);
+      await syncInbox();
       if (!fresh.settings) return;
       const stale = fresh.lastScheduledOn !== dateKey(new Date());
       if (stale || (await scheduledCount().catch(() => 0)) === 0) reschedule(fresh);
@@ -83,7 +97,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     onActive();
     const sub = AppState.addEventListener('change', (st) => st === 'active' && onActive());
     return () => sub.remove();
-  }, [loaded, reschedule]);
+  }, [loaded, reschedule, syncInbox]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -102,12 +116,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }));
         await reschedule(stateRef.current);
       },
-      toggleCheck: (day, id) =>
+      toggleCheck: (day, id) => {
+        const before = stateRef.current.checks[day]?.length ?? 0;
         update((s) => {
           const cur = s.checks[day] ?? [];
           const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
           return { ...s, checks: { ...s.checks, [day]: next } };
-        }),
+        });
+        const st = stateRef.current;
+        if (!st.settings) return;
+        // First check of the day cancels that day's 21:00 "did you forget?" alarm.
+        if (before === 0 && (st.checks[day]?.length ?? 0) > 0) {
+          cancelAlarm('nocheck-' + programDay(st.settings.startDate, parseDateKey(day))).catch(() => {});
+        }
+        // A reached (or lost) 7/14/21 streak schedules (or cancels) next morning's letter.
+        syncStreakAlarms(st).catch(() => {});
+      },
       setWater: (day, n) => update((s) => ({ ...s, water: { ...s.water, [day]: Math.max(0, n) } })),
       setNote: (day, text) => update((s) => ({ ...s, notes: { ...s.notes, [day]: text } })),
       setBody: (day, log) => update((s) => ({ ...s, body: { ...s.body, [day]: { ...s.body[day], ...log } } })),
@@ -130,6 +154,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return { ...s, shopping: { ...s.shopping, [week]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] } };
         }),
       recordAction: (a) => update((s) => applyAction(s, a)),
+      syncInbox,
+      markLetters: (refs, patch) =>
+        update((s) => ({ ...s, inbox: s.inbox.map((e) => (refs.includes(letterRef(e)) ? { ...e, ...patch } : e)) })),
+      previewAllKinds: async () => {
+        const letters: Letter[] = await sendAllKindsPreview(stateRef.current);
+        // Web preview has no notifications: deliver straight to the inbox so the envelopes can be checked.
+        if (Platform.OS === 'web') update((s) => ({ ...s, inbox: moveDue(s.inbox, letters.map((l) => ({ ...l, at: Date.now() })), Date.now()).inbox }));
+      },
       markCelebrated: (n) => update((s) => ({ ...s, celebrated: [...s.celebrated, n] })),
       setTheme: (theme) => update((s) => ({ ...s, theme })),
       setWeightUnit: (weightUnit) => update((s) => ({ ...s, weightUnit })),
@@ -144,7 +176,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         update(() => EMPTY);
       },
     }),
-    [state, loaded, update, reschedule],
+    [state, loaded, update, reschedule, syncInbox],
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

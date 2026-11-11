@@ -61,3 +61,18 @@ export const dark: Palette = {
   // Unchecked boxes in lineSoft (#34435A) disappeared on #283548 cards; the 'disabled' text tone reads clearly.
   control: '#7D8CA3',
 };
+
+/** Envelope + letter paper: the same in light and dark mode (paper stays cream). */
+export const envelope = {
+  back: '#1F2A3A',
+  front: '#283548',
+  frontLow: '#2F3D52',
+  flap: '#34435A',
+  seal: '#C9B68E',
+  paper: '#FFFDF8',
+  paperBorder: '#E6DED0',
+  paperText: '#1F2A3A',
+  paperSub: '#6E7A8C',
+  scrim: 'rgba(15, 21, 30, 0.55)',
+  hint: '#F3EEE4',
+};

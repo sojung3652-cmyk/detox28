@@ -10,6 +10,7 @@ import {
   GlassWater,
   House,
   ImageDown,
+  Mail,
   Info,
   Leaf,
   Minus,
@@ -65,6 +66,7 @@ const MAP = {
   pencil: Pencil,
   target: Target,
   image: ImageDown,
+  mail: Mail,
 } as const;
 
 export type IconName = keyof typeof MAP;

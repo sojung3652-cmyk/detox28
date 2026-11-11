@@ -12,7 +12,6 @@ import {
   requestExactAlarmPermission,
   requestNotificationPermission,
   scheduledCount,
-  testAlarm,
 } from '../../lib/notifications';
 import { pickDate, pickTime, timeKo } from '../../lib/pickers';
 import { formatDateKo, parseDateKey, programDay } from '../../lib/plan';
@@ -190,7 +189,8 @@ function DebugCard() {
         ))}
         <Pill label="오늘로" onPress={() => app.setDebugOffset(0)} />
       </View>
-      <Button kind="outline" label="5초 뒤 테스트 알림" onPress={() => testAlarm()} />
+      <Button kind="outline" icon="note" label="모든 종류 알람 미리 보내보기" onPress={() => app.previewAllKinds()} />
+      <T size="caption" tone="faint">18종류를 5초 뒤부터 4초 간격으로 보내요. 각 문구와 편지봉투를 확인할 수 있어요.</T>
       <Button
         kind="quiet"
         label="전체 초기화 (온보딩부터)"

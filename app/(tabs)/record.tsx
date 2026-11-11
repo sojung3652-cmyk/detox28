@@ -5,6 +5,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withT
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { Icon } from '../../components/Icon';
+import { InboxCard } from '../../components/InboxCard';
 import { Card, CardHeader, Divider, Pill, T, tapFeedback } from '../../components/ui';
 import { DAILY_ROUTINE, PROGRAM_DAYS } from '../../data/program';
 import { dateKey, dateOfDay, formatDateKo, programDay } from '../../lib/plan';
@@ -74,6 +75,8 @@ export default function Record() {
             <Legend label="메모" swatch={<View style={[s.dot, { backgroundColor: c.sub, position: 'relative', bottom: 0 }]} />} />
           </View>
         </Card>
+
+        <InboxCard />
 
         <DayDetail dk={keys[sel - 1]} day={sel} />
 

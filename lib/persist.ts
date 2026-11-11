@@ -3,6 +3,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_FAST_START, DEFAULT_MEAL_TIMES } from '../data/program';
 import type { ThemePref } from '../theme';
+import type { InboxEntry } from './letters';
 import type { MealTimes } from './plan';
 
 // Same key as v1 so existing records carry over; missing fields are filled from EMPTY.
@@ -24,6 +25,7 @@ export type Persisted = {
   stoppedFasts: string[];
   shopping: Record<string, string[]>; // week → checked shopping item ids
   celebrated: number[]; // streak milestones already celebrated
+  inbox: InboxEntry[]; // letters (alarm texts) received so far, oldest first
   debugOffsetDays: number;
   lastScheduledOn: string | null;
 };
@@ -41,12 +43,14 @@ export const EMPTY: Persisted = {
   stoppedFasts: [],
   shopping: {},
   celebrated: [],
+  inbox: [],
   debugOffsetDays: 0,
   lastScheduledOn: null,
 };
 
 export function normalize(raw: unknown): Persisted {
   const p = { ...EMPTY, ...(raw && typeof raw === 'object' ? (raw as Partial<Persisted>) : {}) };
+  if (!Array.isArray(p.inbox)) p.inbox = [];
   if (p.settings) {
     p.settings = {
       startDate: p.settings.startDate,

@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { parseAction, registerActionTask, setupCategories } from '../lib/actions';
+import { LetterHost } from '../components/LetterHost';
 import { AppProvider, useApp } from '../lib/store';
 import { ThemeProvider, fonts, useTheme } from '../theme';
 import '../lib/notifications'; // registers the foreground notification handler
@@ -19,7 +20,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AppProvider>
         <ActionBridge />
-        <Themed>{fontsLoaded ? <Nav /> : null}</Themed>
+        <Themed>{fontsLoaded ? <LetterHost><Nav /></LetterHost> : null}</Themed>
       </AppProvider>
     </SafeAreaProvider>
   );

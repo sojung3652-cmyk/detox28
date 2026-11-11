@@ -7,7 +7,7 @@
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
-import { ALARMS } from '../data/notifications';
+import { ACTION_LABELS } from '../data/notifications';
 import { mutateState } from './persist';
 import { refreshWidget } from './widgetBridge';
 
@@ -19,10 +19,10 @@ import { ACTION_ATE, ACTION_DRANK, applyAction, parseAction } from './actionLogi
 export async function setupCategories() {
   if (Platform.OS === 'web') return;
   await Notifications.setNotificationCategoryAsync('meal', [
-    { identifier: ACTION_ATE, buttonTitle: ALARMS.meal.action, options: { opensAppToForeground: false } },
+    { identifier: ACTION_ATE, buttonTitle: ACTION_LABELS.ate, options: { opensAppToForeground: false } },
   ]);
   await Notifications.setNotificationCategoryAsync('water', [
-    { identifier: ACTION_DRANK, buttonTitle: ALARMS.waterAction.action, options: { opensAppToForeground: false } },
+    { identifier: ACTION_DRANK, buttonTitle: ACTION_LABELS.drank, options: { opensAppToForeground: false } },
   ]);
 }
 

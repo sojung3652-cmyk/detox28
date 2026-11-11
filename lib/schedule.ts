@@ -1,76 +1,155 @@
 // Builds the full list of local alarms for the program (pure, no native calls).
-import { ALARMS, AlarmText } from '../data/notifications';
-import { DINNER_LABEL, PROGRAM_DAYS, WATER_ALARM_TIMES } from '../data/program';
-import { FastInputs, MealTimes, activeFasts, atTime, dateKey, dateOfDay, dinnerTypeOf, fastAt, weekPlan } from './plan';
+import { MESSAGES, MessageKind, SPECIAL, SPECIAL_NOTICE, TITLES } from '../data/notifications';
+import { DAILY_ROUTINE, PROGRAM_DAYS, WATER_ALARM_TIMES } from '../data/program';
+import { FastInputs, MealTimes, activeFasts, addDays, atTime, dateKey, dateOfDay, dinnerTypeOf, fastAt, programDay } from './plan';
+
+export const NO_CHECK_TIME = '21:00';
+export const FAST_EVE_TIME = '21:00';
+export const STREAK_MILESTONES = [7, 14, 21] as const;
+const STREAK_THRESHOLD = 0.8;
+/** Letters arrive one minute after the breakfast alarm so they show as a separate notification. */
+const LETTER_DELAY_MS = 60000;
 
 export type AlarmCategory = 'meal' | 'water';
 
 export type AlarmSpec = {
   id: string;
   date: Date;
+  kind: MessageKind;
+  /** `${kind}.${index}` — which text was used (stored in notification data and the inbox). */
+  key: string;
+  text: string;
+  special: boolean;
   title: string;
   body: string;
-  /** Enables the "먹었어요"/"마셨어요" buttons; data tells the handler what to record. */
   category?: AlarmCategory;
-  data?: { kind: 'meal' | 'water'; day: string; meal?: 'breakfast' | 'lunch' | 'dinner' };
+  meal?: 'breakfast' | 'lunch' | 'dinner';
+  day: string; // dateKey of the alarm
 };
 
-export type ScheduleInputs = FastInputs & { meals: MealTimes };
+export type ScheduleInputs = FastInputs & {
+  meals: MealTimes;
+  checks: Record<string, string[]>;
+  /** Last message key sent per kind (from the inbox), so the first new pick avoids repeating it. */
+  lastKeys?: Partial<Record<MessageKind, string>>;
+};
 
-function fill(s: string, vars: Record<string, string | number>) {
-  return s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
+type Draft = Omit<AlarmSpec, 'key' | 'text' | 'title' | 'body' | 'special'> & { vars?: Record<string, string> };
+
+/** "오후 8시" / "오후 8시 30분" / "오전 12시" */
+export function koHour(d: Date) {
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h < 12 ? '오전' : '오후'} ${h12}시${m ? ` ${m}분` : ''}`;
+}
+
+function fill(s: string, vars: Record<string, string> = {}) {
+  return s.replace(/\{([^}]+)\}/g, (all, k) => vars[k] ?? all);
+}
+
+const good = (checks: Record<string, string[]>, d: Date) => (checks[dateKey(d)]?.length ?? 0) / DAILY_ROUTINE.length >= STREAK_THRESHOLD;
+
+/** Length of the run of ≥80% days ending on (and including) `end`, within the program. */
+function runEndingOn(inp: ScheduleInputs, end: Date) {
+  let n = 0;
+  for (let d = end; programDay(inp.startDate, d) >= 1 && good(inp.checks, d); d = addDays(d, -1)) n++;
+  return n;
+}
+
+/**
+ * Streak letters go out with the breakfast alarm the morning after the streak is reached:
+ *  - today already ≥80% and the run through today hits 7/14/21 → tomorrow's breakfast
+ *  - the run through yesterday hit 7/14/21 → today's breakfast (if still ahead)
+ */
+export function streakDrafts(inp: ScheduleInputs, now: Date): Draft[] {
+  const out: Draft[] = [];
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const consider = (achievedOn: Date) => {
+    const run = runEndingOn(inp, achievedOn);
+    if (!(STREAK_MILESTONES as readonly number[]).includes(run)) return;
+    const sendDay = addDays(achievedOn, 1);
+    const pd = programDay(inp.startDate, sendDay);
+    if (pd < 1 || pd > PROGRAM_DAYS) return;
+    const at = new Date(atTime(sendDay, inp.meals.breakfast).getTime() + LETTER_DELAY_MS);
+    out.push({ id: `streak-${run}`, date: at, kind: `streak${run}` as MessageKind, day: dateKey(sendDay) });
+  };
+  if (good(inp.checks, today)) consider(today);
+  consider(addDays(today, -1));
+  return out.filter((d) => d.date > now);
+}
+
+/** Assigns texts in send order: random, never the same text twice in a row for a kind. */
+export function assignTexts(drafts: Draft[], lastKeys: Partial<Record<MessageKind, string>> = {}, rand: () => number = Math.random): AlarmSpec[] {
+  const last = { ...lastKeys };
+  return [...drafts]
+    .sort((a, b) => a.date.getTime() - b.date.getTime() || a.id.localeCompare(b.id))
+    .map((d) => {
+      const list = MESSAGES[d.kind];
+      const prev = last[d.kind] ? Number(last[d.kind]!.split('.')[1]) : -1;
+      let i = Math.floor(rand() * list.length);
+      if (list.length > 1 && i === prev) i = (i + 1 + Math.floor(rand() * (list.length - 1))) % list.length;
+      const key = `${d.kind}.${i}`;
+      last[d.kind] = key;
+      const text = fill(list[i], d.vars);
+      const special = SPECIAL.includes(d.kind);
+      const { vars, ...rest } = d;
+      return {
+        ...rest,
+        key,
+        text,
+        special,
+        title: special ? SPECIAL_NOTICE.title : TITLES[d.kind],
+        body: special ? SPECIAL_NOTICE.body : text,
+      };
+    });
 }
 
 export function buildAlarms(inp: ScheduleInputs, now: Date, rand: () => number = Math.random): AlarmSpec[] {
   const fasts = activeFasts(inp);
-  const out: AlarmSpec[] = [];
-  const add = (id: string, date: Date, t: AlarmText, vars: Record<string, string | number> = {}, extra: Partial<AlarmSpec> = {}) => {
-    const body = t.body[Math.floor(rand() * t.body.length)];
-    out.push({ id, date, title: fill(t.title, vars), body: fill(body, vars), ...extra });
-  };
-  // Meal alarms are skipped while fasting.
-  const fasting = (d: Date) => !!fastAt(fasts, d);
+  const drafts: Draft[] = [];
+  const fasting = (d: Date) => !!fastAt(fasts, d); // no meal alarms while fasting
 
   for (let day = 1; day <= PROGRAM_DAYS; day++) {
     const date = dateOfDay(inp.startDate, day);
     const dk = dateKey(date);
-    const plan = weekPlan(day);
-    const dinner = DINNER_LABEL[dinnerTypeOf(inp.startDate, day)];
-    const mealExtra = (meal: 'breakfast' | 'lunch' | 'dinner') => ({ category: 'meal' as const, data: { kind: 'meal' as const, day: dk, meal } });
-
     const breakfastAt = atTime(date, inp.meals.breakfast);
-    // New week: sent in the morning even on a fasting morning.
-    if (day > 1 && (day - 1) % 7 === 0) {
-      add(`week-${day}`, new Date(breakfastAt.getTime() + 60000), ALARMS.newWeek, { week: plan.week, title: plan.title, goal: plan.goal });
-    }
-    if (!fasting(breakfastAt)) add(`breakfast-${day}`, breakfastAt, ALARMS.breakfast, {}, mealExtra('breakfast'));
+    const letterAt = new Date(breakfastAt.getTime() + LETTER_DELAY_MS);
+
+    // Special-day letters: sent even on a fasting morning.
+    if (day === 1) drafts.push({ id: 'letter-day1', date: letterAt, kind: 'day1', day: dk });
+    if (day === 8) drafts.push({ id: 'letter-week2', date: letterAt, kind: 'week2Start', day: dk });
+    if (day === 15) drafts.push({ id: 'letter-week3', date: letterAt, kind: 'week3Start', day: dk });
+    if (day === 22) drafts.push({ id: 'letter-week4', date: letterAt, kind: 'week4Start', day: dk });
+    if (day === PROGRAM_DAYS) drafts.push({ id: 'letter-complete', date: letterAt, kind: 'complete', day: dk });
+
+    if (!fasting(breakfastAt)) drafts.push({ id: `breakfast-${day}`, date: breakfastAt, kind: 'breakfast', category: 'meal', meal: 'breakfast', day: dk });
     const lunchAt = atTime(date, inp.meals.lunch);
-    if (!fasting(lunchAt)) add(`lunch-${day}`, lunchAt, ALARMS.lunch, {}, mealExtra('lunch'));
+    if (!fasting(lunchAt)) {
+      // Week 1, day 4: rice at lunch starts today.
+      drafts.push({ id: `lunch-${day}`, date: lunchAt, kind: day === 4 ? 'week1Day4Lunch' : 'lunch', category: 'meal', meal: 'lunch', day: dk });
+    }
     const dinnerAt = atTime(date, inp.meals.dinner);
     if (!fasting(dinnerAt)) {
-      const fastTonight = fasts.some((f) => f.day === day && f.start > dinnerAt);
-      add(`dinner-${day}`, dinnerAt, fastTonight ? ALARMS.dinnerBeforeFast : ALARMS.dinner, { dinner }, mealExtra('dinner'));
+      const kind = dinnerTypeOf(inp.startDate, day) === 'lowcarb' ? 'dinnerNoCarb' : 'dinnerNormal';
+      drafts.push({ id: `dinner-${day}`, date: dinnerAt, kind, category: 'meal', meal: 'dinner', day: dk });
     }
-
     WATER_ALARM_TIMES.forEach((t, i) => {
-      const at = atTime(date, t);
-      add(`water-${day}-${i}`, at, fasting(at) ? ALARMS.waterFasting : ALARMS.water, {}, {
-        category: 'water',
-        data: { kind: 'water', day: dk },
-      });
+      drafts.push({ id: `water-${day}-${i}`, date: atTime(date, t), kind: 'water', category: 'water', day: dk });
     });
+    // "Did you forget?" at 21:00 — only for days with no checks yet; checking cancels it (see store).
+    if (!(inp.checks[dk]?.length)) drafts.push({ id: `nocheck-${day}`, date: atTime(date, NO_CHECK_TIME), kind: 'noCheckToday', day: dk });
   }
 
   for (const f of fasts) {
-    add(`fast-start-${f.id}`, f.start, ALARMS.fastStart);
-    add(`fast-half-${f.id}`, new Date(f.start.getTime() + 12 * 3600000), ALARMS.fastHalf);
-    add(`fast-almost-${f.id}`, new Date(f.end.getTime() - 2 * 3600000), ALARMS.fastAlmost);
-    add(`fast-end-${f.id}`, f.end, ALARMS.fastEnd);
+    const eve = addDays(f.start, -1);
+    drafts.push({ id: `fast-eve-${f.id}`, date: atTime(eve, FAST_EVE_TIME), kind: 'fastTomorrow', day: dateKey(eve) });
+    const vars = { 종료시간: koHour(f.end) };
+    drafts.push({ id: `fast-start-${f.id}`, date: f.start, kind: 'fastStart', day: dateKey(f.start), vars });
+    drafts.push({ id: `fast-end-${f.id}`, date: f.end, kind: 'fastEnd', day: dateKey(f.end) });
   }
 
-  // Last alarm: evening of day 28. Nothing is scheduled past the program.
-  const lastDay = dateOfDay(inp.startDate, PROGRAM_DAYS);
-  add('finish', new Date(atTime(lastDay, inp.meals.dinner).getTime() + 2 * 3600000), ALARMS.finish);
+  drafts.push(...streakDrafts(inp, now));
 
-  return out.filter((a) => a.date > now).sort((a, b) => a.date.getTime() - b.date.getTime());
+  return assignTexts(drafts.filter((d) => d.date > now), inp.lastKeys, rand);
 }

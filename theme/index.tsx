@@ -4,6 +4,7 @@ import { Palette, dark, light } from './colors';
 
 export * from './tokens';
 export type { Palette } from './colors';
+export { envelope } from './colors';
 
 export type ThemePref = 'light' | 'dark' | 'system';
 
