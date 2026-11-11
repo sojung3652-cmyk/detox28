@@ -1,33 +1,16 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { MealTimes, dateKey } from './plan';
+import { BodyLog, EMPTY, Persisted, Settings, loadState, normalize, saveState } from './persist';
+import { dateKey } from './plan';
 import { cancelAll, rescheduleAll, scheduledCount } from './notifications';
+import { refreshWidget } from './widgetBridge';
+import { ParsedAction, applyAction } from './actions';
+import type { ThemePref } from '../theme';
+
+export type { Settings, BodyLog, Persisted } from './persist';
 
 /** Debug tools ("날짜 바꿔보기", 테스트 알림). __DEV__ is false in EAS APK builds, so they disappear there. */
 export const SHOW_DEBUG = __DEV__;
-
-const KEY = '@detox28/state/v1';
-
-export type Settings = { startDate: string; meals: MealTimes };
-
-type Persisted = {
-  settings: Settings | null;
-  checks: Record<string, string[]>;
-  water: Record<string, number>;
-  stoppedFasts: string[];
-  debugOffsetDays: number;
-  lastScheduledOn: string | null;
-};
-
-const EMPTY: Persisted = {
-  settings: null,
-  checks: {},
-  water: {},
-  stoppedFasts: [],
-  debugOffsetDays: 0,
-  lastScheduledOn: null,
-};
 
 type Ctx = Persisted & {
   loaded: boolean;
@@ -35,8 +18,17 @@ type Ctx = Persisted & {
   saveSettings: (s: Settings) => Promise<void>;
   toggleCheck: (day: string, id: string) => void;
   setWater: (day: string, n: number) => void;
+  setNote: (day: string, text: string) => void;
+  setBody: (day: string, log: BodyLog) => void;
+  setFastStart: (fastId: string, startMs: number | null) => Promise<void>;
   stopFast: (id: string) => Promise<void>;
+  toggleShopping: (week: number, id: string) => void;
+  recordAction: (a: ParsedAction) => void;
+  markCelebrated: (n: number) => void;
+  setTheme: (t: ThemePref) => void;
+  setWeightUnit: (u: 'lb' | 'kg') => void;
   setDebugOffset: (days: number) => void;
+  importState: (raw: unknown) => Promise<void>;
   resetAll: () => Promise<void>;
 };
 
@@ -49,18 +41,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   stateRef.current = state;
 
   const update = useCallback((fn: (s: Persisted) => Persisted) => {
-    setState((prev) => {
-      const next = fn(prev);
-      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
-      return next;
-    });
+    const next = fn(stateRef.current);
+    stateRef.current = next;
+    setState(next);
+    saveState(next)
+      .then(() => refreshWidget())
+      .catch(() => {});
   }, []);
 
   const reschedule = useCallback(
-    async (settings: Settings, stopped: string[]) => {
+    async (s: Persisted) => {
+      if (!s.settings) return;
       try {
-        await rescheduleAll(settings.startDate, settings.meals, stopped);
-        update((s) => ({ ...s, lastScheduledOn: dateKey(new Date()) }));
+        await rescheduleAll(s);
+        update((p) => ({ ...p, lastScheduledOn: dateKey(new Date()) }));
       } catch (e) {
         console.warn('reschedule failed', e);
       }
@@ -69,32 +63,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then((raw) => {
-        if (!raw) return;
-        try {
-          setState({ ...EMPTY, ...JSON.parse(raw) });
-        } catch {
-          // corrupt storage: start fresh rather than crash
-        }
-      })
+    loadState()
+      .then(setState)
       .finally(() => setLoaded(true));
   }, []);
 
-  // Refresh alarms once a day when the app is opened, so the random texts rotate
-  // and anything the OS dropped gets put back.
+  // On every return to the foreground: pick up records written while the app was closed
+  // (notification buttons, widget), and refresh alarms once a day so random texts rotate.
   useEffect(() => {
     if (!loaded) return;
-    const check = async () => {
-      const s = stateRef.current;
-      if (!s.settings) return;
-      const stale = s.lastScheduledOn !== dateKey(new Date());
-      if (stale || (await scheduledCount().catch(() => 0)) === 0) {
-        reschedule(s.settings, s.stoppedFasts);
-      }
+    const onActive = async () => {
+      const fresh = await loadState();
+      stateRef.current = fresh;
+      setState(fresh);
+      if (!fresh.settings) return;
+      const stale = fresh.lastScheduledOn !== dateKey(new Date());
+      if (stale || (await scheduledCount().catch(() => 0)) === 0) reschedule(fresh);
     };
-    check();
-    const sub = AppState.addEventListener('change', (st) => st === 'active' && check());
+    onActive();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && onActive());
     return () => sub.remove();
   }, [loaded, reschedule]);
 
@@ -104,11 +91,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loaded,
       offsetMs: SHOW_DEBUG ? state.debugOffsetDays * 86400000 : 0,
       saveSettings: async (settings) => {
-        const startChanged = stateRef.current.settings?.startDate !== settings.startDate;
-        // A new start date means a new program: old stopped-fast ids no longer apply.
-        const stopped = startChanged ? [] : stateRef.current.stoppedFasts;
-        update((s) => ({ ...s, settings, stoppedFasts: stopped }));
-        await reschedule(settings, stopped);
+        const prev = stateRef.current;
+        // A new start date is a new program: old per-fast changes no longer apply.
+        const reset = prev.settings?.startDate !== settings.startDate;
+        update((s) => ({
+          ...s,
+          settings,
+          stoppedFasts: reset ? [] : s.stoppedFasts,
+          fastOverrides: reset ? {} : s.fastOverrides,
+        }));
+        await reschedule(stateRef.current);
       },
       toggleCheck: (day, id) =>
         update((s) => {
@@ -117,16 +109,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return { ...s, checks: { ...s.checks, [day]: next } };
         }),
       setWater: (day, n) => update((s) => ({ ...s, water: { ...s.water, [day]: Math.max(0, n) } })),
-      stopFast: async (id) => {
-        const stopped = [...stateRef.current.stoppedFasts, id];
-        update((s) => ({ ...s, stoppedFasts: stopped }));
-        if (stateRef.current.settings) await reschedule(stateRef.current.settings, stopped);
+      setNote: (day, text) => update((s) => ({ ...s, notes: { ...s.notes, [day]: text } })),
+      setBody: (day, log) => update((s) => ({ ...s, body: { ...s.body, [day]: { ...s.body[day], ...log } } })),
+      setFastStart: async (fastId, startMs) => {
+        update((s) => {
+          const o = { ...s.fastOverrides };
+          if (startMs == null) delete o[fastId];
+          else o[fastId] = startMs;
+          return { ...s, fastOverrides: o };
+        });
+        await reschedule(stateRef.current);
       },
+      stopFast: async (id) => {
+        update((s) => ({ ...s, stoppedFasts: [...s.stoppedFasts, id] }));
+        await reschedule(stateRef.current);
+      },
+      toggleShopping: (week, id) =>
+        update((s) => {
+          const cur = s.shopping[week] ?? [];
+          return { ...s, shopping: { ...s.shopping, [week]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] } };
+        }),
+      recordAction: (a) => update((s) => applyAction(s, a)),
+      markCelebrated: (n) => update((s) => ({ ...s, celebrated: [...s.celebrated, n] })),
+      setTheme: (theme) => update((s) => ({ ...s, theme })),
+      setWeightUnit: (weightUnit) => update((s) => ({ ...s, weightUnit })),
       setDebugOffset: (days) => update((s) => ({ ...s, debugOffsetDays: days })),
+      importState: async (raw) => {
+        const next = normalize(raw);
+        update(() => ({ ...next, lastScheduledOn: null }));
+        await reschedule(stateRef.current);
+      },
       resetAll: async () => {
         await cancelAll().catch(() => {});
-        await AsyncStorage.removeItem(KEY);
-        setState(EMPTY);
+        update(() => EMPTY);
       },
     }),
     [state, loaded, update, reschedule],

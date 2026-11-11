@@ -3,7 +3,6 @@
 import {
   DinnerType,
   FAST_HOURS,
-  FAST_START_AFTER_DINNER_MIN,
   PROGRAM_DAYS,
   SEASON_TIPS,
   WEEKS,
@@ -72,33 +71,52 @@ export function dinnerTypeOf(startKey: string, day: number): DinnerType {
 }
 
 export type Fast = {
-  /** stable id = program day the fast starts (dinner day) */
+  /** stable id = program day the fast starts */
   id: string;
   day: number;
   start: Date;
   end: Date;
 };
 
-/** All fasts in the 28-day program, in order. */
-export function allFasts(startKey: string, meals: MealTimes): Fast[] {
+/** What fast scheduling needs from saved state. */
+export type FastInputs = {
+  startDate: string;
+  fastStart: string; // default start time HH:MM
+  overrides?: Record<string, number>; // fast id → start epoch ms (today-only change / start now)
+  stopped?: string[];
+};
+
+/** All planned fasts in the 28-day program, in order (including stopped ones). */
+export function allFasts({ startDate, fastStart, overrides = {} }: FastInputs): Fast[] {
   const out: Fast[] = [];
   // Stops at day 27: a fast starting on the last evening would run past day 28,
   // and the program (and all alarms) should end with day 28.
   for (let day = 1; day < PROGRAM_DAYS; day++) {
-    const date = dateOfDay(startKey, day);
+    const date = dateOfDay(startDate, day);
     if (!weekPlan(day).fastDays.includes(date.getDay() as Weekday)) continue;
     // Never back-to-back: at a week boundary (e.g. week 2 Wed → week 3 Thu when the program
     // starts on a Thursday) two fasts would chain into 48h. Skip the second one.
     if (out.length && out[out.length - 1].day === day - 1) continue;
-    const start = new Date(atTime(date, meals.dinner).getTime() + FAST_START_AFTER_DINNER_MIN * 60000);
+    const id = 'd' + day;
+    const start = overrides[id] != null ? new Date(overrides[id]) : atTime(date, fastStart);
     const end = new Date(start.getTime() + FAST_HOURS * 3600000);
-    out.push({ id: `d${day}`, day, start, end });
+    out.push({ id, day, start, end });
   }
   return out;
 }
 
-export function activeFasts(startKey: string, meals: MealTimes, stopped: string[]) {
-  return allFasts(startKey, meals).filter((f) => !stopped.includes(f.id));
+export function activeFasts(inp: FastInputs) {
+  const stopped = inp.stopped ?? [];
+  return allFasts(inp).filter((f) => !stopped.includes(f.id));
+}
+
+/** The fast planned for a program day (its start day), if any. */
+export function fastOnDay(inp: FastInputs, day: number) {
+  return activeFasts(inp).find((f) => f.day === day);
+}
+
+export function sameDay(a: Date, b: Date) {
+  return dateKey(a) === dateKey(b);
 }
 
 export function fastAt(fasts: Fast[], t: Date) {

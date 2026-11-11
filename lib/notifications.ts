@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { buildAlarms } from './schedule';
-import { MealTimes } from './plan';
+import type { Persisted } from './persist';
 
 export const CHANNEL_ID = 'routine';
 
@@ -64,15 +64,29 @@ export async function requestExactAlarmPermission() {
  * Delivery stays 'bestEffort' on purpose: with SCHEDULE_EXACT_ALARM granted, expo-notifications
  * already uses setExactAndAllowWhileIdle; 'alarmClock' would add a clock icon to the status bar.
  */
-export async function rescheduleAll(startKey: string, meals: MealTimes, stoppedFasts: string[]) {
+export async function rescheduleAll(st: Persisted) {
   await ensureChannel();
   await Notifications.cancelAllScheduledNotificationsAsync();
-  if (!(await hasNotificationPermission())) return 0;
-  const alarms = buildAlarms(startKey, meals, stoppedFasts, new Date());
+  if (!st.settings || !(await hasNotificationPermission())) return 0;
+  const alarms = buildAlarms(
+    {
+      startDate: st.settings.startDate,
+      fastStart: st.settings.fastStart,
+      meals: st.settings.meals,
+      overrides: st.fastOverrides,
+      stopped: st.stoppedFasts,
+    },
+    new Date(),
+  );
   for (const a of alarms) {
     await Notifications.scheduleNotificationAsync({
       identifier: a.id,
-      content: { title: a.title, body: a.body },
+      content: {
+        title: a.title,
+        body: a.body,
+        categoryIdentifier: a.category,
+        data: a.data ?? {},
+      },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: a.date,

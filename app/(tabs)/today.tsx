@@ -1,45 +1,44 @@
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
-import { Badge, Button, Card, CardTitle, T } from '../../components/ui';
-import { SPECIAL_MESSAGES } from '../../data/messages';
-import { DAILY_ROUTINE, DINNER_LABEL, FAST_HOURS, PROGRAM_DAYS, SAFETY_NOTICE, WATER_GOAL } from '../../data/program';
+import { Ring } from '../../components/Ring';
+import { Badge, Button, Card, CardHeader, CheckRow, T, tapFeedback } from '../../components/ui';
+import { POST_FAST_NOTE, menusOf, snacksForWeek } from '../../data/menus';
+import { DAILY_ROUTINE, DINNER_LABEL, FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, WATER_GOAL } from '../../data/program';
+import { pickTime, timeKo } from '../../lib/pickers';
 import {
+  Fast,
+  FastInputs,
   activeFasts,
+  addDays,
+  atTime,
   dateKey,
   dinnerTypeOf,
   fastAt,
   formatDateKo,
   formatTime,
   nextFast,
-  pad,
   programDay,
+  sameDay,
   seasonTip,
   seededPick,
-  tipOfDay,
   weekPlan,
 } from '../../lib/plan';
 import { useApp, useNow } from '../../lib/store';
-import { C, F, R } from '../../lib/theme';
+import { MAX_FONT_SCALE, fonts, radius, spacing, type, useTheme } from '../../theme';
 
 export default function Today() {
+  const { c } = useTheme();
   const app = useApp();
-  const now = useNow(1000);
-  const settings = app.settings!;
-  const day = programDay(settings.startDate, now);
-  const key = dateKey(now);
+  const now = useNow(60000); // ring + countdown refresh once a minute
+  const day = programDay(app.settings!.startDate, now);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
-      <ScrollView contentContainerStyle={s.wrap}>
-        <T size={F.small} color={C.sub}>{formatDateKo(now)}</T>
-        {day < 1 ? (
-          <BeforeStart daysLeft={1 - day} />
-        ) : day > PROGRAM_DAYS ? (
-          <Finished />
-        ) : (
-          <InProgram day={day} dayKey={key} now={now} />
-        )}
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
+      <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
+        {day < 1 ? <BeforeStart daysLeft={1 - day} /> : day > PROGRAM_DAYS ? <Finished /> : <InProgram day={day} now={now} />}
       </ScrollView>
     </SafeAreaView>
   );
@@ -48,10 +47,14 @@ export default function Today() {
 function BeforeStart({ daysLeft }: { daysLeft: number }) {
   return (
     <>
-      <T size={F.h1} weight="800">시작까지 D-{daysLeft}</T>
+      <View>
+        <T tone="sub">시작까지</T>
+        <T size="display" medium>D-{daysLeft}</T>
+      </View>
+      <GoalCard week={1} />
       <Card>
         <T>시작하는 날 아침부터 알람이 울려요. 그 전에 장을 봐 두면 좋아요.</T>
-        <T size={F.small} color={C.sub}>1주차 재료: {weekPlan(1).ingredients.join(', ')}</T>
+        <Button kind="outline" icon="cart" label="1주차 장보기 리스트" onPress={() => router.push('/shopping')} />
       </Card>
     </>
   );
@@ -60,186 +63,298 @@ function BeforeStart({ daysLeft }: { daysLeft: number }) {
 function Finished() {
   return (
     <>
-      <T size={F.h1} weight="800">28일 완주</T>
-      <Card tint={C.pinkFaint}>
-        <Icon name="heart" size={32} color={C.pink} />
-        <T>4주 동안 정말 수고 많았어요. 진행 탭에서 지난 기록을 볼 수 있어요.</T>
+      <View>
+        <T tone="sub">4주 완주</T>
+        <T size="display" medium>28일</T>
+      </View>
+      <Card>
+        <T>4주 동안 정말 수고 많았어요.</T>
+        <Button label="완주 기록 보기" icon="trophy" onPress={() => router.push('/complete')} />
       </Card>
     </>
   );
 }
 
-function InProgram({ day, dayKey, now }: { day: number; dayKey: string; now: Date }) {
+function InProgram({ day, now }: { day: number; now: Date }) {
   const app = useApp();
-  const settings = app.settings!;
+  const st = app.settings!;
   const plan = weekPlan(day);
-  const dinner = dinnerTypeOf(settings.startDate, day);
-  const msg = SPECIAL_MESSAGES[day];
-  const checked = app.checks[dayKey] ?? [];
-  const water = app.water[dayKey] ?? 0;
-  const snacks = seededPick(plan.snacks, dayKey, 2);
+  const dinner = dinnerTypeOf(st.startDate, day);
+  const dk = dateKey(now);
+  const checked = app.checks[dk] ?? [];
+  const inputs: FastInputs = { startDate: st.startDate, fastStart: st.fastStart, overrides: app.fastOverrides, stopped: app.stoppedFasts };
 
   return (
     <>
-      <View style={{ gap: 4 }}>
-        <T size={F.h1} weight="800">{day}일차 · {plan.week}주차</T>
-        <T color={C.sub}>{plan.theme}</T>
+      <View style={s.top}>
+        <View style={{ flex: 1 }}>
+          <T size="small" tone="sub">{plan.week}주차</T>
+          <T size="h1" medium>{day}일차</T>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
+          <T size="caption" tone="faint">오늘 저녁</T>
+          <Badge label={DINNER_LABEL[dinner]} />
+        </View>
       </View>
 
-      {msg ? (
-        <Card tint={C.pinkSoft}>
-          <CardTitle icon="heart">{msg.title}</CardTitle>
-          <T>{msg.body}</T>
+      <GoalCard week={plan.week} />
+
+      {day === PROGRAM_DAYS ? (
+        <Card>
+          <T>마지막 날이에요. 4주 동안의 기록을 모아봤어요.</T>
+          <Button icon="trophy" label="완주 기록 보기" onPress={() => router.push('/complete')} />
         </Card>
       ) : null}
 
-      <Card>
-        <CardTitle icon="moon">오늘 저녁</CardTitle>
-        <View style={s.row}>
-          <Badge label={DINNER_LABEL[dinner]} bg={dinner === 'lowcarb' ? C.pinkSoft : C.sageSoft} />
-          <T size={F.small} color={C.sub} style={{ flex: 1 }}>
-            {dinner === 'lowcarb' ? '밥·빵·면 없이 단백질과 채소로' : '평소처럼, 적당한 양으로'}
-          </T>
-        </View>
-      </Card>
-
-      <FastCard now={now} />
+      <FastCard day={day} now={now} inputs={inputs} />
 
       <Card>
-        <CardTitle icon="check" right={<T size={F.small} color={C.sub}>{checked.length}/{DAILY_ROUTINE.length}</T>}>
-          기본 루틴
-        </CardTitle>
-        {DAILY_ROUTINE.map((item) => {
-          const on = checked.includes(item.id);
-          return (
-            <Pressable
-              key={item.id}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
-              onPress={() => app.toggleCheck(dayKey, item.id)}
-              style={[s.check, on && { backgroundColor: C.pinkFaint }]}
-            >
-              <View style={[s.box, on && { backgroundColor: C.pink, borderColor: C.pink }]}>
-                {on ? <Icon name="check" size={16} color={C.white} strokeWidth={2.6} /> : null}
-              </View>
-              <View style={{ flex: 1 }}>
-                <T weight="600" color={on ? C.sub : C.text}>{item.label}</T>
-                {item.detail ? <T size={F.tiny} color={C.sub}>{item.detail}</T> : null}
-              </View>
-            </Pressable>
-          );
-        })}
-      </Card>
-
-      <Card>
-        <CardTitle icon="leaf">오늘의 간식</CardTitle>
-        {snacks.map((sn) => (
-          <View key={sn.name} style={s.snack}>
-            <T weight="600">{sn.name}</T>
-            <T size={F.tiny} color={C.sub}>{sn.store}</T>
-          </View>
-        ))}
-      </Card>
-
-      <Card>
-        <CardTitle icon="drop" right={<T size={F.small} color={C.sub}>목표 {WATER_GOAL}잔</T>}>물 마시기</CardTitle>
-        <View style={s.waterRow}>
-          <Pressable
-            accessibilityLabel="한 잔 빼기"
-            onPress={() => app.setWater(dayKey, water - 1)}
-            style={s.round}
-          >
-            <Icon name="minus" color={C.text} />
-          </Pressable>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <T size={F.h1 + 6} weight="800" color={water >= WATER_GOAL ? '#5E8A6E' : C.text}>{water}잔</T>
-          </View>
-          <Pressable
-            accessibilityLabel="한 잔 더하기"
-            onPress={() => app.setWater(dayKey, water + 1)}
-            style={[s.round, { backgroundColor: C.pink }]}
-          >
-            <Icon name="plus" color={C.white} />
-          </Pressable>
-        </View>
-        <View style={s.cups}>
-          {Array.from({ length: WATER_GOAL }).map((_, i) => (
-            <View key={i} style={[s.cup, i < water && { backgroundColor: '#BFD8E6' }]} />
+        <CardHeader title="기본 루틴" right={<T size="small" tone="sub">{checked.length} / {DAILY_ROUTINE.length}</T>} />
+        <View>
+          {DAILY_ROUTINE.map((item) => (
+            <CheckRow key={item.id} label={item.label} detail={item.detail} checked={checked.includes(item.id)} onToggle={() => app.toggleCheck(dk, item.id)} />
           ))}
         </View>
       </Card>
 
-      <Card tint={C.butter}>
-        <CardTitle icon="spark">오늘의 팁</CardTitle>
-        <T>{tipOfDay(day)}</T>
-        <View style={{ height: 1, backgroundColor: '#EADCB4' }} />
-        <View style={s.row}>
-          <Icon name="sun" size={18} color={C.sub} />
-          <T size={F.small} color={C.sub} style={{ flex: 1 }}>{seasonTip(now.getMonth() + 1)}</T>
-        </View>
-      </Card>
+      <View style={s.twoCol}>
+        <WaterCard dk={dk} />
+        <NextUpCard day={day} now={now} inputs={inputs} />
+      </View>
+
+      <MemoCard dk={dk} />
+
+      <View style={s.season}>
+        <Icon name="leaf" size={16} />
+        <T size="small" tone="sub" style={{ flex: 1 }}>{seasonTip(now.getMonth() + 1)}</T>
+      </View>
     </>
   );
 }
 
-function hms(ms: number) {
-  const t = Math.max(0, Math.floor(ms / 1000));
-  return `${pad(Math.floor(t / 3600))}:${pad(Math.floor((t % 3600) / 60))}:${pad(t % 60)}`;
+export function GoalCard({ week }: { week: number }) {
+  const { c } = useTheme();
+  const plan = weekPlan(week * 7);
+  return (
+    <Pressable accessibilityRole="button" onPress={() => router.push('/goals')} style={[s.goal, { backgroundColor: c.goalBg }]}>
+      <View style={s.goalHead}>
+        <T size="caption" medium color={c.goalLabel} style={{ flex: 1 }}>이번 주 목표 · {plan.week}주차 {plan.title}</T>
+        <Icon name="right" size={16} color={c.goalLabel} />
+      </View>
+      <T size="title" color={c.goalText}>{plan.goal}</T>
+    </Pressable>
+  );
 }
 
-function FastCard({ now }: { now: Date }) {
+function hm(ms: number) {
+  const mins = Math.max(0, Math.ceil(ms / 60000));
+  return `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`;
+}
+
+function when(d: Date, now: Date) {
+  return sameDay(d, now) ? `오늘 ${formatTime(d)}` : sameDay(d, addDays(now, 1)) ? `내일 ${formatTime(d)}` : `${formatDateKo(d)} ${formatTime(d)}`;
+}
+
+function FastCard({ day, now, inputs }: { day: number; now: Date; inputs: FastInputs }) {
+  const { c } = useTheme();
   const app = useApp();
-  const st = app.settings!;
-  const fasts = activeFasts(st.startDate, st.meals, app.stoppedFasts);
+  const { width } = useWindowDimensions();
+  const ringSize = Math.min(232, width - 2 * spacing.screen - 2 * spacing.xl);
+  const fasts = activeFasts(inputs);
   const cur = fastAt(fasts, now);
+  const today = fasts.find((f) => f.day === day && f.start > now);
+
+  // Today-only change: pick a new start time on the fast's own day. Alarms are rescheduled by the store.
+  const changeTime = (f: Fast) =>
+    pickTime(formatTime(f.start), (v) => {
+      app.setFastStart(f.id, atTime(f.start, v).getTime());
+    });
 
   if (cur) {
     const total = cur.end.getTime() - cur.start.getTime();
-    const done = now.getTime() - cur.start.getTime();
+    const progress = (now.getTime() - cur.start.getTime()) / total;
+    const cheer = FAST_CHEERS[Math.floor(now.getTime() / 3600000) % FAST_CHEERS.length];
     const stop = () =>
       Alert.alert('단식을 멈출까요?', SAFETY_NOTICE, [
         { text: '계속하기', style: 'cancel' },
         { text: '멈추고 식사하기', style: 'destructive', onPress: () => app.stopFast(cur.id) },
       ]);
     return (
-      <Card tint={C.lavender}>
-        <CardTitle icon="clock">단식 중</CardTitle>
-        <T size={F.small} color={C.sub}>남은 시간</T>
-        <T size={40} weight="800" style={{ fontVariant: ['tabular-nums'] }}>{hms(cur.end.getTime() - now.getTime())}</T>
-        <View style={s.bar}>
-          <View style={[s.barFill, { width: `${Math.min(100, (done / total) * 100)}%` }]} />
+      <Card style={{ alignItems: 'center', gap: spacing.xl }}>
+        <CardHeader title="단식 중" icon="timer" />
+        <Ring progress={progress} size={ringSize}>
+          <T size="display" medium style={{ fontVariant: ['tabular-nums'] }} maxFontSizeMultiplier={1.2}>
+            {hm(cur.end.getTime() - now.getTime())}
+          </T>
+          <T tone="sub">남았어요</T>
+        </Ring>
+        <View style={s.times}>
+          <TimeCell label="시작" value={when(cur.start, now)} />
+          <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: c.line }} />
+          <TimeCell label="종료" value={when(cur.end, now)} />
         </View>
-        <T size={F.small} color={C.sub}>{formatDateKo(cur.end)} {formatTime(cur.end)}에 끝나요 · 물은 자주 마셔요</T>
-        <Button kind="ghost" label="몸이 안 좋아요, 멈출게요" onPress={stop} />
+        <T tone="sub" style={{ textAlign: 'center' }}>{cheer}</T>
+        <View style={{ alignSelf: 'stretch', gap: spacing.sm }}>
+          <Button kind="outline" icon="clock" label="오늘만 시간 바꾸기" onPress={() => changeTime(cur)} />
+          <Button kind="quiet" label="몸이 안 좋아요, 멈출게요" onPress={stop} />
+        </View>
+      </Card>
+    );
+  }
+
+  if (today) {
+    return (
+      <Card style={{ alignItems: 'center', gap: spacing.xl }}>
+        <CardHeader title="오늘은 단식하는 날" icon="timer" />
+        <Ring progress={0} size={ringSize}>
+          <T tone="sub">시작</T>
+          <T size="display" medium maxFontSizeMultiplier={1.2}>{formatTime(today.start)}</T>
+          <T size="small" tone="faint">24시간</T>
+        </Ring>
+        <T tone="sub" style={{ textAlign: 'center' }}>
+          {when(today.end, now)}에 끝나요. 저녁은 든든하게 먹어요.
+        </T>
+        <View style={{ alignSelf: 'stretch', gap: spacing.sm }}>
+          <Button icon="play" label="지금 시작" onPress={() => app.setFastStart(today.id, now.getTime())} />
+          <Button kind="outline" icon="clock" label="오늘만 시간 바꾸기" onPress={() => changeTime(today)} />
+        </View>
       </Card>
     );
   }
 
   const next = nextFast(fasts, now);
+  const meal = nextMeal(now, app.settings!.meals);
   return (
-    <Card>
-      <CardTitle icon="clock">단식</CardTitle>
-      {next ? (
-        <T>
-          다음 단식: {formatDateKo(next.start)} {formatTime(next.start)} 시작 · {FAST_HOURS}시간
-        </T>
-      ) : (
-        <T color={C.sub}>남은 단식 일정이 없어요.</T>
-      )}
+    <Card style={{ gap: spacing.xl }}>
+      <CardHeader title="오늘은 단식 없는 날" icon="timer" />
+      <View style={{ gap: spacing.lg }}>
+        <View style={{ gap: spacing.xs }}>
+          <T size="small" tone="sub">다음 식사</T>
+          <T size="h1" medium>{meal.label} {timeKo(formatTime(meal.at))}</T>
+        </View>
+        <View style={{ gap: spacing.xs }}>
+          <T size="small" tone="sub">다음 단식</T>
+          <T size="title">{next ? `${when(next.start, now)} 시작` : '남은 단식이 없어요'}</T>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function TimeCell({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
+      <T size="caption" tone="faint">{label}</T>
+      <T size="small" medium style={{ textAlign: 'center' }}>{value}</T>
+    </View>
+  );
+}
+
+function nextMeal(now: Date, meals: { breakfast: string; lunch: string; dinner: string }) {
+  const list = [
+    { label: '아침', t: meals.breakfast },
+    { label: '점심', t: meals.lunch },
+    { label: '저녁', t: meals.dinner },
+  ];
+  for (const m of list) {
+    const at = atTime(now, m.t);
+    if (at > now) return { label: m.label, at };
+  }
+  return { label: '내일 아침', at: atTime(addDays(now, 1), meals.breakfast) };
+}
+
+function WaterCard({ dk }: { dk: string }) {
+  const { c } = useTheme();
+  const app = useApp();
+  const water = app.water[dk] ?? 0;
+  const tap = (i: number) => {
+    tapFeedback();
+    app.setWater(dk, water === i + 1 ? i : i + 1);
+  };
+  return (
+    <Card style={s.half}>
+      <CardHeader title="물" icon="water" right={<T size="small" tone="sub">{water} / {WATER_GOAL}</T>} />
+      <View style={s.cups}>
+        {Array.from({ length: WATER_GOAL }).map((_, i) => {
+          const full = i < water;
+          return (
+            <Pressable
+              key={i}
+              accessibilityLabel={`물 ${i + 1}잔`}
+              accessibilityState={{ selected: full }}
+              onPress={() => tap(i)}
+              style={[s.cup, { borderColor: full ? c.accent : c.lineSoft, backgroundColor: full ? c.accent : 'transparent' }]}
+            >
+              <Icon name="water" size={16} color={full ? c.onAccent : c.faint} />
+            </Pressable>
+          );
+        })}
+      </View>
+    </Card>
+  );
+}
+
+function NextUpCard({ day, now, inputs }: { day: number; now: Date; inputs: FastInputs }) {
+  const fasts = activeFasts(inputs);
+  // Post-fast meal if a fast ends within the next 3h or ended within the last 3h; otherwise a snack.
+  const nearEnd = fasts.find((f) => Math.abs(f.end.getTime() - now.getTime()) < 3 * 3600000);
+  const dk = dateKey(now);
+  const pick = nearEnd ? seededPick(menusOf('postfast'), dk, 1)[0] : seededPick(snacksForWeek(weekPlan(day).week), dk, 1)[0];
+  return (
+    <Card style={s.half}>
+      <CardHeader title="다음 할 일" icon="spark" />
+      <View style={{ gap: spacing.xs }}>
+        <T size="caption" tone="faint">{nearEnd ? '단식 후 첫 끼' : '오늘의 간식'}</T>
+        <T medium>{pick?.name ?? '물 한 잔'}</T>
+        <T size="caption" tone="sub" numberOfLines={2}>{nearEnd ? POST_FAST_NOTE : pick?.ingredients.join(', ')}</T>
+      </View>
+    </Card>
+  );
+}
+
+function MemoCard({ dk }: { dk: string }) {
+  const { c } = useTheme();
+  const app = useApp();
+  const [text, setText] = useState(app.notes[dk] ?? '');
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveRef = useRef(app.setNote);
+  saveRef.current = app.setNote;
+
+  useEffect(() => setText(app.notes[dk] ?? ''), [dk]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onChange = (v: string) => {
+    setText(v);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => saveRef.current(dk, v), 500); // autosave
+  };
+
+  return (
+    <Card style={{ gap: spacing.md }}>
+      <CardHeader title="오늘 메모" icon="note" />
+      <TextInput
+        value={text}
+        onChangeText={onChange}
+        onBlur={() => app.setNote(dk, text)}
+        placeholder="오늘 몸 상태나 기억하고 싶은 걸 적어요"
+        placeholderTextColor={c.faint}
+        multiline
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
+        style={[s.memo, { color: c.text, backgroundColor: c.inset, fontFamily: fonts.regular, fontSize: type.body }]}
+      />
     </Card>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { padding: 18, gap: 14, paddingBottom: 40 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  check: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10, paddingHorizontal: 10, borderRadius: R.small },
-  box: { width: 28, height: 28, borderRadius: 9, borderWidth: 2, borderColor: C.pinkSoft, alignItems: 'center', justifyContent: 'center' },
-  snack: { backgroundColor: C.sageSoft, borderRadius: R.small, padding: 14 },
-  waterRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  round: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.pinkFaint, alignItems: 'center', justifyContent: 'center' },
-  cups: { flexDirection: 'row', gap: 6 },
-  cup: { flex: 1, height: 14, borderRadius: 7, backgroundColor: C.line },
-  bar: { height: 12, borderRadius: 6, backgroundColor: C.white, overflow: 'hidden' },
-  barFill: { height: '100%', backgroundColor: C.pink, borderRadius: 6 },
+  wrap: { padding: spacing.screen, gap: spacing.lg, paddingBottom: 48 },
+  top: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, marginBottom: spacing.xs },
+  goal: { borderRadius: radius.card, padding: spacing.xl, gap: spacing.sm },
+  goalHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  times: { flexDirection: 'row', alignSelf: 'stretch', gap: spacing.md },
+  twoCol: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
+  half: { flexGrow: 1, flexBasis: 150, padding: spacing.lg, gap: spacing.md },
+  cups: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  cup: { width: 34, height: 40, borderRadius: radius.inner - 2, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  memo: { minHeight: 88, borderRadius: radius.inner, padding: spacing.md, textAlignVertical: 'top' },
+  season: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingHorizontal: spacing.xs },
 });

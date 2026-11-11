@@ -31,8 +31,8 @@ export const DEFAULT_MEAL_TIMES = {
 /** 단식 길이(시간) */
 export const FAST_HOURS = 24;
 
-/** 저녁 식사 알람 후 몇 분 뒤를 "단식 시작"으로 볼지 (저녁 먹는 시간) */
-export const FAST_START_AFTER_DINNER_MIN = 60;
+/** 기본 단식 시작 시간 (설정에서 변경, 단식 당일 '오늘만 시간 바꾸기' 가능) */
+export const DEFAULT_FAST_START = '20:00';
 
 /** 물 마시기 목표(잔)와 알람 시간 */
 export const WATER_GOAL = 8;
@@ -58,14 +58,13 @@ export const DAILY_ROUTINE: RoutineItem[] = [
 
 // ───────────────────────── 주차별 플랜 ─────────────────────────
 
-/** name: 한국어 이름, store: 미국 마트에서 찾을 때 쓰는 이름 */
-export type Snack = { name: string; store: string };
-
 export type WeekPlan = {
   week: 1 | 2 | 3 | 4;
-  theme: string;
+  /** 주차 이름 (예: 장내 환경 바꾸기) */
+  title: string;
+  /** 이번 주 목표 한 문장 (오늘 화면 '이번 주 목표' 카드, 새 주차 알람) */
+  goal: string;
   ingredients: string[];
-  snacks: Snack[];
   /** 저녁이 "탄수화물 X"인 요일. 나머지 요일은 일반식 */
   lowCarbDinnerDays: Weekday[];
   /** 이 요일 저녁 식사 후 FAST_HOURS 동안 단식 */
@@ -79,13 +78,9 @@ export type WeekPlan = {
 export const WEEKS: WeekPlan[] = [
   {
     week: 1,
-    theme: '장내 환경 바꾸기',
+    title: '장내 환경 바꾸기',
+    goal: '탄수화물을 줄이고 채소와 단백질로 몸을 리셋해요',
     ingredients: ['브로콜리', '그린빈', '토마토', '아보카도', '파프리카', '당근', '달걀', '두부'],
-    snacks: [
-      { name: '플레인 요거트', store: 'plain Greek yogurt (unsweetened)' },
-      { name: '찐 닭가슴살', store: 'boneless skinless chicken breast' },
-      { name: '생오이 + 쌈장', store: 'Persian cucumbers · 쌈장은 H Mart' },
-    ],
     lowCarbDinnerDays: [0, 1, 2],
     fastDays: [],
     summary: '간헐적 단식 없음. 첫 3일은 탄수화물 제한, 4일째부터 점심 한 끼 밥 허용.',
@@ -101,17 +96,11 @@ export const WEEKS: WeekPlan[] = [
   },
   {
     week: 2,
-    theme: '간헐적 단식 시작',
+    title: '단식 시작',
+    goal: '주 1회 24시간 단식에 적응해요',
     ingredients: [
       '브로콜리', '그린빈', '토마토', '아보카도', '파프리카', '당근', '달걀', '두부',
       '양배추', '오이', '견과류', '블루베리',
-    ],
-    snacks: [
-      { name: '두유 (무가당)', store: 'unsweetened soy milk' },
-      { name: '요거트', store: 'plain Greek yogurt' },
-      { name: '두부', store: 'firm tofu' },
-      { name: '카카오닙스', store: 'cacao nibs' },
-      { name: '아보카도 + 으깬 달걀', store: 'avocado + eggs' },
     ],
     lowCarbDinnerDays: [1, 3, 5],
     fastDays: [3],
@@ -128,18 +117,11 @@ export const WEEKS: WeekPlan[] = [
   },
   {
     week: 3,
-    theme: '리듬 익히기',
+    title: '효과가 보이는 주',
+    goal: '주 2회 단식, 몸이 가벼워지는 걸 느껴봐요',
     ingredients: [
       '브로콜리', '그린빈', '토마토', '아보카도', '파프리카', '당근', '달걀', '두부',
       '양배추', '오이', '견과류', '블루베리', '바나나', '사과',
-    ],
-    snacks: [
-      { name: '두유', store: 'unsweetened soy milk' },
-      { name: '찐 고구마', store: 'Japanese sweet potato' },
-      { name: '요거트 + 베리류', store: 'plain Greek yogurt + blueberries' },
-      { name: '찐 감자', store: 'baby potatoes / Yukon Gold' },
-      { name: '다크초콜릿 (85% 이상)', store: 'dark chocolate 85% cacao' },
-      { name: '아몬드밀크 + 바닐라 아이스크림', store: 'unsweetened almond milk + vanilla ice cream' },
     ],
     lowCarbDinnerDays: [0, 2, 4, 6],
     fastDays: [2, 4],
@@ -156,21 +138,11 @@ export const WEEKS: WeekPlan[] = [
   },
   {
     week: 4,
-    theme: '근육과 마무리',
+    title: '단단하게 마무리',
+    goal: '주 3회 단식, 밀가루를 멀리하고 근육량을 지켜요',
     ingredients: [
       '브로콜리', '그린빈', '토마토', '아보카도', '양배추', '파프리카', '당근', '달걀',
       '호두', '삶은 고구마', '베리류', '사과',
-    ],
-    snacks: [
-      { name: '두유', store: 'unsweetened soy milk' },
-      { name: '요거트 + 베리류', store: 'plain Greek yogurt + berries' },
-      { name: '키위', store: 'kiwi' },
-      { name: '배', store: 'Asian pear' },
-      { name: '말린 망고', store: 'dried mango (no sugar added)' },
-      { name: '다크초콜릿 (85% 이상)', store: 'dark chocolate 85% cacao' },
-      { name: '바나나칩', store: 'banana chips' },
-      { name: '무염 크래커 + 치즈 + 딸기', store: 'unsalted crackers + cheese + strawberries' },
-      { name: '아몬드밀크 + 바닐라 아이스크림', store: 'unsweetened almond milk + vanilla ice cream' },
     ],
     lowCarbDinnerDays: [1, 3, 5],
     fastDays: [1, 3, 5],
@@ -187,155 +159,6 @@ export const WEEKS: WeekPlan[] = [
   },
 ];
 
-// ───────────────────────── 메뉴 추천 ─────────────────────────
-
-export type Menu = {
-  name: string;
-  /** 간단한 재료 (미국 마트 기준) */
-  ingredients: string;
-  /** 조리법 2~3줄 */
-  steps: string[];
-};
-
-export const LOW_CARB_DINNERS: Menu[] = [
-  {
-    name: '연어구이 + 아보카도 + 데친 브로콜리',
-    ingredients: 'salmon fillet, avocado, broccoli, 올리브오일, 소금·후추',
-    steps: [
-      '연어에 소금·후추를 뿌리고 올리브오일 두른 팬에 껍질부터 4분, 뒤집어 3분 굽기.',
-      '브로콜리는 끓는 물에 1~2분 데치기.',
-      '아보카도를 썰어 곁들이고 올리브오일 한 스푼.',
-    ],
-  },
-  {
-    name: '두부 스테이크 + 그린빈 + 볶은 당근',
-    ingredients: 'firm tofu, green beans, carrots, 간장 조금',
-    steps: [
-      '두부는 물기를 빼고 1.5cm 두께로 썰어 앞뒤 노릇하게 굽기.',
-      '그린빈은 2분 데치고, 당근은 채 썰어 올리브오일에 볶기.',
-      '간장 반 스푼을 두부에 살짝 둘러 마무리.',
-    ],
-  },
-  {
-    name: '닭가슴살 양배추볶음',
-    ingredients: 'chicken breast, green cabbage, 마늘, 간장',
-    steps: [
-      '닭가슴살을 한입 크기로 썰어 올리브오일에 마늘과 함께 익히기.',
-      '양배추를 넣고 숨이 죽을 때까지 볶기.',
-      '간장 조금, 후추로 간하기.',
-    ],
-  },
-  {
-    name: '벨페퍼 · 토마토 오믈렛',
-    ingredients: 'eggs, bell pepper, cherry tomatoes',
-    steps: [
-      '벨페퍼와 토마토를 잘게 썰어 올리브오일에 1분 볶기.',
-      '풀어 둔 달걀 3개를 붓고 약불에서 익히다 반 접기.',
-    ],
-  },
-  {
-    name: '콜리플라워 라이스 채소볶음',
-    ingredients: 'riced cauliflower (냉동 코너), 당근, 벨페퍼, 달걀',
-    steps: [
-      '당근·벨페퍼를 먼저 볶고 콜리플라워 라이스를 넣어 5분 볶기.',
-      '한쪽에 달걀을 스크램블해서 섞기.',
-      '간장이나 소금으로 가볍게 간.',
-    ],
-  },
-  {
-    name: '새우 주키니 볶음',
-    ingredients: 'shrimp (peeled), zucchini, 마늘',
-    steps: [
-      '마늘을 올리브오일에 볶다가 새우를 넣고 색이 변할 때까지 익히기.',
-      '반달 썬 주키니를 넣고 2~3분 더 볶기.',
-      '소금·후추, 레몬즙 조금.',
-    ],
-  },
-  {
-    name: '소고기 채소볶음',
-    ingredients: 'flank steak 또는 sirloin, 브로콜리, 벨페퍼, 양파 조금',
-    steps: [
-      '소고기를 얇게 썰어 센 불에 빠르게 볶아 덜어 두기.',
-      '채소를 볶다가 소고기를 다시 넣고 간장 조금으로 마무리.',
-    ],
-  },
-  {
-    name: '낫토 계란 채소볼',
-    ingredients: 'natto (H Mart 냉동), 달걀, 데친 채소',
-    steps: [
-      '그릇에 데친 브로콜리·그린빈·양배추를 담기.',
-      '낫토를 잘 저어 올리고 반숙 계란이나 계란후라이 올리기.',
-      '올리브오일 한 스푼, 김가루 조금.',
-    ],
-  },
-];
-
-export const NORMAL_DINNERS: Menu[] = [
-  {
-    name: '현미밥 + 된장국 + 생선구이',
-    ingredients: 'brown rice, 된장 (H Mart), tofu, cod 또는 mackerel',
-    steps: [
-      '현미밥은 반 공기.',
-      '된장국은 두부·애호박·양파를 넣고 끓이기.',
-      '생선은 소금 살짝 뿌려 팬이나 에어프라이어에 굽기.',
-    ],
-  },
-  {
-    name: '고구마 + 닭가슴살 + 샐러드',
-    ingredients: 'sweet potato, chicken breast, mixed greens',
-    steps: [
-      '고구마는 찌거나 에어프라이어 200°C에 25분.',
-      '닭가슴살은 소금·후추로 구워 썰기.',
-      '샐러드에 올리브오일과 레몬즙.',
-    ],
-  },
-  {
-    name: '현미 비빔밥',
-    ingredients: 'brown rice, 시금치, 당근, 콩나물, 달걀, 고추장 조금',
-    steps: [
-      '현미밥 반 공기에 데친 나물과 볶은 당근 올리기.',
-      '계란후라이 하나, 고추장은 반 스푼만.',
-    ],
-  },
-  {
-    name: '퀴노아 볼',
-    ingredients: 'quinoa, chickpeas, cucumber, cherry tomatoes, avocado',
-    steps: [
-      '퀴노아를 물 2배에 15분 삶기.',
-      '병아리콩, 오이, 토마토, 아보카도를 올리고 올리브오일·레몬즙.',
-    ],
-  },
-  {
-    name: '통밀 파스타 토마토소스 (소량)',
-    ingredients: 'whole wheat pasta, marinara (no sugar added), 닭가슴살 또는 새우',
-    steps: [
-      '파스타는 평소의 절반 양으로 삶기.',
-      '토마토소스에 단백질과 채소를 넉넉히 넣어 비율 맞추기.',
-    ],
-  },
-];
-
-export const POST_FAST_MEALS: Menu[] = [
-  {
-    name: '두유 + 데친 채소',
-    ingredients: 'unsweetened soy milk, 브로콜리, 양배추',
-    steps: [
-      '두유 한 컵을 천천히 먼저 마시기.',
-      '10~20분 뒤 데친 채소를 꼭꼭 씹어 먹기.',
-    ],
-  },
-  {
-    name: '계란 + 데친 채소',
-    ingredients: 'eggs, 브로콜리, 그린빈',
-    steps: [
-      '삶은 계란 1~2개와 데친 채소로 가볍게 시작.',
-      '천천히 먹고, 1~2시간 뒤 평소 식사.',
-    ],
-  },
-];
-
-export const POST_FAST_NOTE = '단식 후 첫 끼는 가볍게, 천천히. 기름지거나 단 음식은 피해요.';
-
 // ───────────────────────── 계절 팁 (북반구, 기기 날짜의 월 기준) ─────────────────────────
 
 /** key: 월(1~12) */
@@ -351,74 +174,78 @@ export const SEASON_TIPS: { months: number[]; tip: string }[] = [
 export const SAFETY_NOTICE =
   '어지럽거나 몸이 안 좋으면 단식을 멈추고 식사하세요. 지병이 있거나 약을 복용 중이라면 단식 전 의사와 상담하세요.';
 
-// ───────────────────────── 알람 문구 (여러 개 중 랜덤) ─────────────────────────
-// {dinner} 는 "탄수화물 X" 또는 "일반식", {week} 는 주차 번호, {theme} 는 주차 테마로 바뀌어요.
+// ───────────────────────── 단식 카드 응원 문구 (오늘 화면, 랜덤) ─────────────────────────
 
-export const ALARM_TEXTS = {
-  breakfast: {
-    title: ['좋은 아침이에요', '아침 먹을 시간', '오늘도 시작해 볼까요'],
-    body: [
-      '낫토랑 계란으로 든든하게 시작해요.',
-      '천천히, 따뜻하게 아침 챙겨 먹어요.',
-      '오늘 하루도 응원할게요.',
-      '물 한 잔 먼저 마시고 아침 먹어요.',
-    ],
-  },
-  lunch: {
-    title: ['점심 시간이에요', '점심 챙겨 먹어요'],
-    body: [
-      '채소 먼저, 천천히 꼭꼭.',
-      '바빠도 점심은 거르지 말아요.',
-      '오후도 힘내라고 점심 알림 보내요.',
-    ],
-  },
-  dinner: {
-    title: ['저녁 시간 · 오늘은 {dinner}', '오늘 저녁은 {dinner}'],
-    body: [
-      '오늘 하루도 수고했어요.',
-      '맛있게, 천천히 먹어요.',
-      '메뉴 탭에서 {dinner} 메뉴를 골라 봐요.',
-    ],
-  },
-  dinnerBeforeFast: {
-    title: ['저녁 시간 · 오늘은 {dinner}'],
-    body: [
-      '저녁 먹고 나면 24시간 단식이 시작돼요. 든든하게 드세요.',
-      '오늘 저녁 후 단식 시작이에요. 단백질 꼭 챙겨요.',
-    ],
-  },
-  water: {
-    title: ['물 한 잔 마실 시간', '물 마셔요', '수분 충전 시간'],
-    body: ['한 잔 마시고 카운터도 눌러 줘요.', '목마르기 전에 한 잔.', '물 한 잔이 컨디션을 지켜 줘요.'],
-  },
-  waterFasting: {
-    title: ['물 한 잔 마실 시간'],
-    body: ['단식 중엔 물을 더 자주 마셔요.', '단식 중이니까 물 한 잔 꼭.'],
-  },
-  fastStart: {
-    title: ['단식 시작', '지금부터 24시간 단식'],
-    body: ['오늘 밤도 편하게 쉬어요. 내일 같은 시간에 끝나요.', '물은 자주 마셔도 괜찮아요. 응원할게요.'],
-  },
-  fastHalf: {
-    title: ['12시간 지났어요', '벌써 절반!'],
-    body: ['잘하고 있어요. 오늘은 근력운동 대신 가볍게 걸어요.', '절반 왔어요. 물 한 잔 마시고 힘내요.'],
-  },
-  fastAlmost: {
-    title: ['단식 2시간 남았어요', '거의 다 왔어요'],
-    body: ['조금만 더! 첫 끼는 두유나 계란으로 가볍게 준비해 둬요.', '2시간만 버티면 끝이에요.'],
-  },
-  fastEnd: {
-    title: ['단식 끝! 수고했어요', '단식 완료'],
-    body: ['가볍게 첫 끼 드세요. 천천히, 꼭꼭.', '가볍게 첫 끼 드세요. 두유나 계란, 데친 채소부터.'],
-  },
-  newWeek: {
-    title: ['{week}주차 시작', '새로운 한 주, {week}주차'],
-    body: ['이번 주 테마는 "{theme}". 오늘 화면에서 확인해요.', '{theme}. 이번 주도 함께해요.'],
-  },
-};
+export const FAST_CHEERS = [
+  '천천히 함께 가봐요. 물은 자주 마셔요.',
+  '잘하고 있어요. 오늘은 가볍게 걸어봐요.',
+  '배고픔은 파도처럼 지나가요. 물 한 잔 마셔봐요.',
+  '조금씩 몸이 가벼워지고 있어요.',
+  '어지러우면 언제든 멈춰도 괜찮아요.',
+];
 
-/** 28일이 끝나는 날 저녁 이후 보내는 마지막 알람 */
-export const FINISH_ALARM = {
-  title: '28일 완주!',
-  body: '4주 동안 정말 수고 많았어요.',
+// ───────────────────────── 주차별 장보기 리스트 (미국 마트 기준) ─────────────────────────
+// section: 마트 코너. id는 체크 기록에 쓰여요.
+
+export type ShoppingItem = { id: string; ko: string; en: string; section: string };
+
+const BASE_SHOPPING: ShoppingItem[] = [
+  { id: 'broccoli', ko: '브로콜리', en: 'broccoli crowns', section: '채소 · 과일 (Produce)' },
+  { id: 'greenbean', ko: '그린빈', en: 'green beans', section: '채소 · 과일 (Produce)' },
+  { id: 'tomato', ko: '토마토', en: 'tomatoes / cherry tomatoes', section: '채소 · 과일 (Produce)' },
+  { id: 'bellpepper', ko: '벨페퍼 (파프리카)', en: 'bell peppers', section: '채소 · 과일 (Produce)' },
+  { id: 'carrot', ko: '당근', en: 'carrots', section: '채소 · 과일 (Produce)' },
+  { id: 'avocado', ko: '아보카도', en: 'avocados', section: '채소 · 과일 (Produce)' },
+  { id: 'blueberry', ko: '블루베리', en: 'blueberries', section: '채소 · 과일 (Produce)' },
+  { id: 'eggs', ko: '달걀', en: 'eggs (2 dozen)', section: '단백질 (Meat · Eggs · Tofu)' },
+  { id: 'tofu', ko: '두부', en: 'extra firm tofu', section: '단백질 (Meat · Eggs · Tofu)' },
+  { id: 'chicken', ko: '닭가슴살', en: 'boneless skinless chicken breast', section: '단백질 (Meat · Eggs · Tofu)' },
+  { id: 'salmon', ko: '연어', en: 'salmon fillet', section: '단백질 (Meat · Eggs · Tofu)' },
+  { id: 'yogurt', ko: '플레인 그릭요거트', en: 'Greek yogurt plain, unsweetened', section: '유제품 (Dairy)' },
+  { id: 'nuts', ko: '견과류', en: 'almonds, Brazil nuts, walnuts (unsalted)', section: '견과 · 기타 (Pantry)' },
+  { id: 'oliveoil', ko: '올리브오일', en: 'extra virgin olive oil', section: '견과 · 기타 (Pantry)' },
+  { id: 'natto', ko: '낫토', en: 'natto (frozen)', section: '아시안 마켓 (H Mart)' },
+];
+
+export const SHOPPING: Record<1 | 2 | 3 | 4, ShoppingItem[]> = {
+  1: [
+    ...BASE_SHOPPING,
+    { id: 'cucumber', ko: '오이', en: 'Persian cucumbers', section: '채소 · 과일 (Produce)' },
+    { id: 'ssamjang', ko: '쌈장', en: 'ssamjang', section: '아시안 마켓 (H Mart)' },
+    { id: 'cauli-rice', ko: '콜리플라워 라이스', en: 'cauliflower rice (frozen)', section: '냉동 (Frozen)' },
+  ],
+  2: [
+    ...BASE_SHOPPING,
+    { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
+    { id: 'cucumber', ko: '오이', en: 'Persian cucumbers', section: '채소 · 과일 (Produce)' },
+    { id: 'soymilk', ko: '무가당 두유', en: 'unsweetened soy milk', section: '유제품 (Dairy)' },
+    { id: 'cacao-nibs', ko: '카카오닙스', en: 'cacao nibs', section: '견과 · 기타 (Pantry)' },
+    { id: 'broth', ko: '채소 육수 (단식 후 수프용)', en: 'low-sodium vegetable broth', section: '견과 · 기타 (Pantry)' },
+  ],
+  3: [
+    ...BASE_SHOPPING,
+    { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
+    { id: 'banana', ko: '바나나', en: 'bananas', section: '채소 · 과일 (Produce)' },
+    { id: 'apple', ko: '사과', en: 'apples (Honeycrisp, Fuji)', section: '채소 · 과일 (Produce)' },
+    { id: 'sweet-potato', ko: '고구마', en: 'Japanese sweet potatoes', section: '채소 · 과일 (Produce)' },
+    { id: 'potato', ko: '감자', en: 'baby potatoes / Yukon Gold', section: '채소 · 과일 (Produce)' },
+    { id: 'kabocha', ko: '단호박', en: 'kabocha squash', section: '채소 · 과일 (Produce)' },
+    { id: 'soymilk', ko: '무가당 두유', en: 'unsweetened soy milk', section: '유제품 (Dairy)' },
+    { id: 'almondmilk', ko: '무가당 아몬드밀크', en: 'unsweetened almond milk', section: '유제품 (Dairy)' },
+    { id: 'dark-choco', ko: '다크초콜릿 85%', en: 'dark chocolate 85% cacao', section: '견과 · 기타 (Pantry)' },
+  ],
+  4: [
+    ...BASE_SHOPPING,
+    { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
+    { id: 'apple', ko: '사과', en: 'apples', section: '채소 · 과일 (Produce)' },
+    { id: 'sweet-potato', ko: '고구마', en: 'Japanese sweet potatoes', section: '채소 · 과일 (Produce)' },
+    { id: 'kiwi', ko: '키위', en: 'kiwi', section: '채소 · 과일 (Produce)' },
+    { id: 'pear', ko: '배', en: 'Asian pears', section: '채소 · 과일 (Produce)' },
+    { id: 'strawberry', ko: '딸기', en: 'strawberries', section: '채소 · 과일 (Produce)' },
+    { id: 'soymilk', ko: '무가당 두유', en: 'unsweetened soy milk', section: '유제품 (Dairy)' },
+    { id: 'cheese', ko: '치즈', en: 'cheddar cheese', section: '유제품 (Dairy)' },
+    { id: 'crackers', ko: '무염 크래커', en: 'unsalted crackers', section: '견과 · 기타 (Pantry)' },
+    { id: 'dried-mango', ko: '말린 망고', en: 'dried mango, no sugar added', section: '견과 · 기타 (Pantry)' },
+    { id: 'banana-chips', ko: '바나나칩', en: 'banana chips', section: '견과 · 기타 (Pantry)' },
+  ],
 };

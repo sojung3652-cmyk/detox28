@@ -1,10 +1,11 @@
 import { Redirect } from 'expo-router';
 import { View } from 'react-native';
 import { useApp } from '../lib/store';
-import { C } from '../lib/theme';
+import { useTheme } from '../theme';
 
 export default function Gate() {
   const { loaded, settings } = useApp();
-  if (!loaded) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+  const { c } = useTheme();
+  if (!loaded) return <View style={{ flex: 1, backgroundColor: c.bg }} />;
   return <Redirect href={settings ? '/today' : '/onboarding'} />;
 }

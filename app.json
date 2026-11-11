@@ -6,15 +6,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#FBF7F0",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F7F3EB",
     "ios": {
       "supportsTablet": false
     },
     "android": {
       "package": "com.detox28.routine",
       "adaptiveIcon": {
-        "backgroundColor": "#F6D9DE",
+        "backgroundColor": "#F7F3EB",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -32,8 +32,42 @@
       [
         "expo-notifications",
         {
-          "color": "#E8A3B0",
+          "color": "#1F2A3A",
           "defaultChannel": "routine"
+        }
+      ],
+      "expo-font",
+      "expo-sharing",
+      [
+        "react-native-android-widget",
+        {
+          "fonts": [
+            "./assets/fonts/Pretendard-Regular.ttf",
+            "./assets/fonts/Pretendard-Medium.ttf"
+          ],
+          "widgets": [
+            {
+              "name": "Routine",
+              "label": "28일 루틴",
+              "description": "오늘 일차, 단식 남은 시간, 루틴 진행률",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "widgetCategory": "home_screen"
+            }
+          ]
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "granularPermissions": [
+            "photo"
+          ],
+          "isAccessMediaLocationEnabled": false
         }
       ]
     ],

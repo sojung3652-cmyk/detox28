@@ -1,87 +1,76 @@
 // Builds the full list of local alarms for the program (pure, no native calls).
-import { ALARM_TEXTS, DINNER_LABEL, FINISH_ALARM, PROGRAM_DAYS, WATER_ALARM_TIMES } from '../data/program';
-import { SPECIAL_MESSAGES } from '../data/messages';
-import {
-  MealTimes,
-  activeFasts,
-  atTime,
-  dateOfDay,
-  dinnerTypeOf,
-  fastAt,
-  weekPlan,
-} from './plan';
+import { ALARMS, AlarmText } from '../data/notifications';
+import { DINNER_LABEL, PROGRAM_DAYS, WATER_ALARM_TIMES } from '../data/program';
+import { FastInputs, MealTimes, activeFasts, atTime, dateKey, dateOfDay, dinnerTypeOf, fastAt, weekPlan } from './plan';
 
-export type AlarmSpec = { id: string; date: Date; title: string; body: string };
+export type AlarmCategory = 'meal' | 'water';
 
-type TextSet = { title: string[]; body: string[] };
+export type AlarmSpec = {
+  id: string;
+  date: Date;
+  title: string;
+  body: string;
+  /** Enables the "먹었어요"/"마셨어요" buttons; data tells the handler what to record. */
+  category?: AlarmCategory;
+  data?: { kind: 'meal' | 'water'; day: string; meal?: 'breakfast' | 'lunch' | 'dinner' };
+};
 
-function pick<T>(arr: T[], rand: () => number) {
-  return arr[Math.floor(rand() * arr.length)];
-}
+export type ScheduleInputs = FastInputs & { meals: MealTimes };
 
 function fill(s: string, vars: Record<string, string | number>) {
   return s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
 }
 
-export function buildAlarms(
-  startKey: string,
-  meals: MealTimes,
-  stoppedFasts: string[],
-  now: Date,
-  rand: () => number = Math.random,
-): AlarmSpec[] {
-  const fasts = activeFasts(startKey, meals, stoppedFasts);
+export function buildAlarms(inp: ScheduleInputs, now: Date, rand: () => number = Math.random): AlarmSpec[] {
+  const fasts = activeFasts(inp);
   const out: AlarmSpec[] = [];
-  const add = (id: string, date: Date, set: TextSet, vars: Record<string, string | number> = {}) => {
-    out.push({ id, date, title: fill(pick(set.title, rand), vars), body: fill(pick(set.body, rand), vars) });
+  const add = (id: string, date: Date, t: AlarmText, vars: Record<string, string | number> = {}, extra: Partial<AlarmSpec> = {}) => {
+    const body = t.body[Math.floor(rand() * t.body.length)];
+    out.push({ id, date, title: fill(t.title, vars), body: fill(body, vars), ...extra });
   };
-  // Meal alarms are skipped while fasting (spec: "단식 중에는 식사 알람 보내지 않기").
+  // Meal alarms are skipped while fasting.
   const fasting = (d: Date) => !!fastAt(fasts, d);
 
   for (let day = 1; day <= PROGRAM_DAYS; day++) {
-    const date = dateOfDay(startKey, day);
+    const date = dateOfDay(inp.startDate, day);
+    const dk = dateKey(date);
     const plan = weekPlan(day);
-    const dinner = DINNER_LABEL[dinnerTypeOf(startKey, day)];
-    const breakfastAt = atTime(date, meals.breakfast);
+    const dinner = DINNER_LABEL[dinnerTypeOf(inp.startDate, day)];
+    const mealExtra = (meal: 'breakfast' | 'lunch' | 'dinner') => ({ category: 'meal' as const, data: { kind: 'meal' as const, day: dk, meal } });
 
-    // Special message / new week: always sent in the morning, even on a fasting morning.
-    const msg = SPECIAL_MESSAGES[day];
-    if (msg) {
-      out.push({ id: `msg-${day}`, date: breakfastAt, title: msg.title, body: '오늘 화면에서 메시지를 확인해 보세요.' });
-    }
+    const breakfastAt = atTime(date, inp.meals.breakfast);
+    // New week: sent in the morning even on a fasting morning.
     if (day > 1 && (day - 1) % 7 === 0) {
-      add(`week-${day}`, new Date(breakfastAt.getTime() + 60000), ALARM_TEXTS.newWeek, {
-        week: plan.week,
-        theme: plan.theme,
-      });
+      add(`week-${day}`, new Date(breakfastAt.getTime() + 60000), ALARMS.newWeek, { week: plan.week, title: plan.title, goal: plan.goal });
     }
-
-    if (!fasting(breakfastAt)) add(`breakfast-${day}`, breakfastAt, ALARM_TEXTS.breakfast);
-    const lunchAt = atTime(date, meals.lunch);
-    if (!fasting(lunchAt)) add(`lunch-${day}`, lunchAt, ALARM_TEXTS.lunch);
-    const dinnerAt = atTime(date, meals.dinner);
+    if (!fasting(breakfastAt)) add(`breakfast-${day}`, breakfastAt, ALARMS.breakfast, {}, mealExtra('breakfast'));
+    const lunchAt = atTime(date, inp.meals.lunch);
+    if (!fasting(lunchAt)) add(`lunch-${day}`, lunchAt, ALARMS.lunch, {}, mealExtra('lunch'));
+    const dinnerAt = atTime(date, inp.meals.dinner);
     if (!fasting(dinnerAt)) {
-      const fastTonight = fasts.some((f) => f.day === day);
-      add(`dinner-${day}`, dinnerAt, fastTonight ? ALARM_TEXTS.dinnerBeforeFast : ALARM_TEXTS.dinner, { dinner });
+      const fastTonight = fasts.some((f) => f.day === day && f.start > dinnerAt);
+      add(`dinner-${day}`, dinnerAt, fastTonight ? ALARMS.dinnerBeforeFast : ALARMS.dinner, { dinner }, mealExtra('dinner'));
     }
 
     WATER_ALARM_TIMES.forEach((t, i) => {
       const at = atTime(date, t);
-      add(`water-${day}-${i}`, at, fasting(at) ? ALARM_TEXTS.waterFasting : ALARM_TEXTS.water);
+      add(`water-${day}-${i}`, at, fasting(at) ? ALARMS.waterFasting : ALARMS.water, {}, {
+        category: 'water',
+        data: { kind: 'water', day: dk },
+      });
     });
   }
 
   for (const f of fasts) {
-    add(`fast-start-${f.id}`, f.start, ALARM_TEXTS.fastStart);
-    add(`fast-half-${f.id}`, new Date(f.start.getTime() + 12 * 3600000), ALARM_TEXTS.fastHalf);
-    add(`fast-almost-${f.id}`, new Date(f.end.getTime() - 2 * 3600000), ALARM_TEXTS.fastAlmost);
-    add(`fast-end-${f.id}`, f.end, ALARM_TEXTS.fastEnd);
+    add(`fast-start-${f.id}`, f.start, ALARMS.fastStart);
+    add(`fast-half-${f.id}`, new Date(f.start.getTime() + 12 * 3600000), ALARMS.fastHalf);
+    add(`fast-almost-${f.id}`, new Date(f.end.getTime() - 2 * 3600000), ALARMS.fastAlmost);
+    add(`fast-end-${f.id}`, f.end, ALARMS.fastEnd);
   }
 
-  // Last alarm: evening of day 28, after dinner. Nothing is scheduled past the program.
-  const lastDay = dateOfDay(startKey, PROGRAM_DAYS);
-  const finishAt = new Date(atTime(lastDay, meals.dinner).getTime() + 2 * 3600000);
-  out.push({ id: 'finish', date: finishAt, title: FINISH_ALARM.title, body: FINISH_ALARM.body });
+  // Last alarm: evening of day 28. Nothing is scheduled past the program.
+  const lastDay = dateOfDay(inp.startDate, PROGRAM_DAYS);
+  add('finish', new Date(atTime(lastDay, inp.meals.dinner).getTime() + 2 * 3600000), ALARMS.finish);
 
   return out.filter((a) => a.date > now).sort((a, b) => a.date.getTime() - b.date.getTime());
 }
