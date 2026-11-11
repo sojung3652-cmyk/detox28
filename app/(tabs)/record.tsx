@@ -10,7 +10,7 @@ import { DAILY_ROUTINE, PROGRAM_DAYS } from '../../data/program';
 import { dateKey, dateOfDay, formatDateKo, programDay } from '../../lib/plan';
 import { STREAK_MILESTONES, dayKeys, fastStats, fmtWeight, fromUnit, ratioOn, streaks, toUnit, weightSeries } from '../../lib/stats';
 import { useApp, useNow } from '../../lib/store';
-import { MAX_FONT_SCALE, fonts, radius, spacing, type, useTheme } from '../../theme';
+import { MAX_FONT_SCALE, fonts, radius, spacing, textScale, type, useTheme } from '../../theme';
 
 const MEAL_LABEL = { breakfast: '아침', lunch: '점심', dinner: '저녁' } as const;
 const CONDITIONS = ['힘들어요', '조금 힘들어요', '보통이에요', '좋아요', '아주 좋아요'];
@@ -39,7 +39,7 @@ export default function Record() {
 
         <View style={s.stats}>
           <StreakCard current={current} longest={longest} />
-          <Card style={s.stat}>
+          <Card style={[s.stat, { flexBasis: 140 * textScale() }]}>
             <T size="small" tone="sub">완료한 단식</T>
             <T size="h1" medium>{fasts.done}<T tone="sub"> / {fasts.total}회</T></T>
           </Card>
@@ -147,7 +147,7 @@ function StreakCard({ current, longest }: { current: number; longest: number }) 
   });
 
   return (
-    <Card style={s.stat}>
+    <Card style={[s.stat, { flexBasis: 140 * textScale() }]}>
       <T size="small" tone="sub">연속 기록</T>
       <View style={{ alignSelf: 'flex-start' }}>
         <Animated.View pointerEvents="none" style={[s.pulse, { borderColor: c.accent }, ringStyle]} />
@@ -216,7 +216,7 @@ function DayDetail({ dk, day }: { dk: string; day: number }) {
                 accessibilityLabel={label}
                 accessibilityState={{ selected: on }}
                 onPress={() => { tapFeedback(); app.setBody(dk, { condition: on ? undefined : v }); }}
-                style={[s.cond, on ? { backgroundColor: c.accent, borderColor: c.accent } : { borderColor: c.lineSoft }]}
+                style={[s.cond, on ? { backgroundColor: c.accent, borderColor: c.accent } : { borderColor: c.control }]}
               >
                 <T size="small" medium color={on ? c.onAccent : c.text} allowFontScaling={false}>{v}</T>
               </Pressable>
@@ -347,7 +347,7 @@ const s = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   chip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
-  stat: { flexGrow: 1, flexBasis: 140, gap: spacing.xs, padding: spacing.lg },
+  stat: { flexGrow: 1, gap: spacing.xs, padding: spacing.lg },
   pulse: { position: 'absolute', left: -14, top: -10, width: 72, height: 72, borderRadius: 36, borderWidth: 2 },
   week: { flexDirection: 'row', gap: 6 },
   cell: { flex: 1, aspectRatio: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

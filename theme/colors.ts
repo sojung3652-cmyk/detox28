@@ -16,6 +16,7 @@ export type Palette = {
   goalText: string;
   goalLabel: string;
   inset: string; // subtle fill inside cards (water cups, inputs)
+  control: string; // border of unchecked checkboxes / radios
 };
 
 export const light: Palette = {
@@ -35,6 +36,7 @@ export const light: Palette = {
   goalText: '#F3EEE4',
   goalLabel: '#C9B68E',
   inset: '#F7F3EB',
+  control: '#D9D0C0',
 };
 
 export const dark: Palette = {
@@ -56,4 +58,6 @@ export const dark: Palette = {
   goalText: '#F3EEE4',
   goalLabel: '#E8D5B0',
   inset: '#2F3D52',
+  // Unchecked boxes in lineSoft (#34435A) disappeared on #283548 cards; the 'disabled' text tone reads clearly.
+  control: '#7D8CA3',
 };

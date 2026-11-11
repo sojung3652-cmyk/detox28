@@ -133,7 +133,7 @@ export function CheckRow({ label, detail, checked, onToggle }: { label: string; 
   }, [checked, v]);
   const boxStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(v.value, [0, 1], [c.card, c.accent]),
-    borderColor: interpolateColor(v.value, [0, 1], [c.lineSoft, c.accent]),
+    borderColor: interpolateColor(v.value, [0, 1], [c.control, c.accent]),
   }));
   const tickStyle = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ scale: 0.6 + 0.4 * v.value }] }));
   return (

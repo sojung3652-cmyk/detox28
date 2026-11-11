@@ -27,7 +27,7 @@ import {
   weekPlan,
 } from '../../lib/plan';
 import { useApp, useNow } from '../../lib/store';
-import { MAX_FONT_SCALE, fonts, radius, spacing, type, useTheme } from '../../theme';
+import { MAX_FONT_SCALE, fonts, radius, spacing, textScale, type, useTheme } from '../../theme';
 
 export default function Today() {
   const { c } = useTheme();
@@ -272,7 +272,7 @@ function WaterCard({ dk }: { dk: string }) {
     app.setWater(dk, water === i + 1 ? i : i + 1);
   };
   return (
-    <Card style={s.half}>
+    <Card style={[s.half, { flexBasis: 150 * textScale() }]}>
       <CardHeader title="물" icon="water" right={<T size="small" tone="sub">{water} / {WATER_GOAL}</T>} />
       <View style={s.cups}>
         {Array.from({ length: WATER_GOAL }).map((_, i) => {
@@ -301,7 +301,7 @@ function NextUpCard({ day, now, inputs }: { day: number; now: Date; inputs: Fast
   const dk = dateKey(now);
   const pick = nearEnd ? seededPick(menusOf('postfast'), dk, 1)[0] : seededPick(snacksForWeek(weekPlan(day).week), dk, 1)[0];
   return (
-    <Card style={s.half}>
+    <Card style={[s.half, { flexBasis: 150 * textScale() }]}>
       <CardHeader title="다음 할 일" icon="spark" />
       <View style={{ gap: spacing.xs }}>
         <T size="caption" tone="faint">{nearEnd ? '단식 후 첫 끼' : '오늘의 간식'}</T>
@@ -352,9 +352,10 @@ const s = StyleSheet.create({
   goalHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   times: { flexDirection: 'row', alignSelf: 'stretch', gap: spacing.md },
   twoCol: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
-  half: { flexGrow: 1, flexBasis: 150, padding: spacing.lg, gap: spacing.md },
-  cups: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  cup: { width: 34, height: 40, borderRadius: radius.inner - 2, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  half: { flexGrow: 1, padding: spacing.lg, gap: spacing.md },
+  cups: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  // 4 per row at any card width (two rows of 4 = goal of 8).
+  cup: { flexBasis: '21%', flexGrow: 1, maxWidth: 64, height: 40, borderRadius: radius.inner - 2, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   memo: { minHeight: 88, borderRadius: radius.inner, padding: spacing.md, textAlignVertical: 'top' },
   season: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingHorizontal: spacing.xs },
 });
