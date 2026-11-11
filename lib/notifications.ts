@@ -75,6 +75,9 @@ export function scheduleInputs(st: Persisted): ScheduleInputs | null {
   };
 }
 
+/** Water alarms stay plain notifications: they are not kept as letters (no envelope popup, no inbox). */
+const isLetter = (a: AlarmSpec) => a.kind !== 'water';
+
 const toLetter = (a: AlarmSpec): Letter => ({ id: a.id, at: a.date.getTime(), kind: a.kind, key: a.key, text: a.text, special: a.special });
 
 async function scheduleOne(a: AlarmSpec) {
@@ -107,7 +110,7 @@ export async function rescheduleAll(st: Persisted) {
   }
   const alarms = buildAlarms(inp, new Date());
   for (const a of alarms) await scheduleOne(a);
-  await saveOutbox(alarms.map(toLetter));
+  await saveOutbox(alarms.filter(isLetter).map(toLetter));
   return alarms.length;
 }
 
@@ -170,7 +173,7 @@ export async function sendAllKindsPreview(st: Persisted): Promise<Letter[]> {
   if (Platform.OS !== 'web') {
     await ensureChannel();
     for (const a of specs) await scheduleOne(a);
-    await saveOutbox([...(await loadOutbox()), ...specs.map(toLetter)]);
+    await saveOutbox([...(await loadOutbox()), ...specs.filter(isLetter).map(toLetter)]);
   }
-  return specs.map(toLetter);
+  return specs.filter(isLetter).map(toLetter);
 }
