@@ -26,6 +26,7 @@ export type Persisted = {
   shopping: Record<string, string[]>; // week → checked shopping item ids
   celebrated: number[]; // streak milestones already celebrated
   inbox: InboxEntry[]; // letters (alarm texts) received so far, oldest first
+  routineNoticeSeen: number[]; // weeks whose "new routine items" notice was dismissed
   debugOffsetDays: number;
   lastScheduledOn: string | null;
 };
@@ -44,6 +45,7 @@ export const EMPTY: Persisted = {
   shopping: {},
   celebrated: [],
   inbox: [],
+  routineNoticeSeen: [],
   debugOffsetDays: 0,
   lastScheduledOn: null,
 };

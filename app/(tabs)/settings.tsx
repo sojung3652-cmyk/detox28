@@ -11,6 +11,8 @@ import {
   hasNotificationPermission,
   requestExactAlarmPermission,
   requestNotificationPermission,
+  listScheduled,
+  ScheduledRow,
   scheduledCount,
 } from '../../lib/notifications';
 import { pickDate, pickTime, timeKo } from '../../lib/pickers';
@@ -210,6 +212,37 @@ function VersionCard() {
   );
 }
 
+/** Debug: the alarms the OS actually has scheduled (type, time, first part of the text). */
+function ScheduledList() {
+  const [data, setData] = useState<{ permission: boolean; exact: boolean; rows: ScheduledRow[] } | null>(null);
+  const [all, setAll] = useState(false);
+  const fmt = (at: number | null) => {
+    if (at == null) return '-';
+    const d = new Date(at);
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const rows = data ? (all ? data.rows : data.rows.slice(0, 20)) : [];
+  return (
+    <View style={{ gap: spacing.sm }}>
+      <Button kind="outline" icon="clock" label="예약된 알람 목록 보기" onPress={async () => setData(await listScheduled())} />
+      {data ? (
+        <View style={{ gap: 4 }}>
+          <T size="caption" tone="sub">
+            알림 권한 {data.permission ? '허용됨' : '꺼짐'} · 정확한 알람 {data.exact ? '허용됨' : '꺼짐'} · 예약 {data.rows.length}개
+          </T>
+          {data.rows.length === 0 ? <T size="caption" tone="faint">예약된 알람이 없어요. 알림 권한이 꺼져 있으면 예약되지 않아요.</T> : null}
+          {rows.map((r) => (
+            <T key={r.id} size="caption" numberOfLines={1}>
+              {fmt(r.at)} · {r.kind} · {r.text.slice(0, 24)}
+            </T>
+          ))}
+          {data.rows.length > 20 ? <Pill label={all ? '접기' : `전체 ${data.rows.length}개 보기`} onPress={() => setAll(!all)} /> : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 /** Development only — hidden in release APKs via SHOW_DEBUG (= __DEV__). */
 function DebugCard() {
   const app = useApp();
@@ -228,6 +261,7 @@ function DebugCard() {
         ))}
         <Pill label="오늘로" onPress={() => app.setDebugOffset(0)} />
       </View>
+      <ScheduledList />
       <Button kind="outline" icon="note" label="모든 종류 알람 미리 보내보기" onPress={() => app.previewAllKinds()} />
       <T size="caption" tone="faint">18종류를 5초 뒤부터 4초 간격으로 보내요. 각 문구와 편지봉투를 확인할 수 있어요.</T>
       <Button

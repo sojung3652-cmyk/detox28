@@ -1,14 +1,15 @@
 // Derived numbers shared by the record tab, the 28-day summary and the widget.
-import { DAILY_ROUTINE, PROGRAM_DAYS } from '../data/program';
+import { PROGRAM_DAYS } from '../data/program';
 import type { Persisted } from './persist';
-import { activeFasts, allFasts, dateKey, dateOfDay, programDay } from './plan';
+import { activeFasts, allFasts, dateKey, dateOfDay, programDay, routineProgress } from './plan';
 
 export const STREAK_THRESHOLD = 0.8;
 export const STREAK_MILESTONES = [7, 14, 21];
 export const LB_PER_KG = 2.20462;
 
 export function ratioOn(s: Persisted, dk: string) {
-  return (s.checks[dk]?.length ?? 0) / DAILY_ROUTINE.length;
+  // Each day is measured against its own week's routine (10~15 items depending on the week).
+  return routineProgress(s.settings!.startDate, s.checks, dk).ratio;
 }
 
 function fastInputs(s: Persisted) {

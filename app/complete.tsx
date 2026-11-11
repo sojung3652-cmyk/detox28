@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 import { Icon } from '../components/Icon';
 import { Button, T } from '../components/ui';
-import { DAILY_ROUTINE } from '../data/program';
 import { dateOfDay, formatDateKo } from '../lib/plan';
 import { dayKeys, fastStats, fmtWeight, ratioOn, streaks, toUnit, weightSeries } from '../lib/stats';
 import { useApp, useNow } from '../lib/store';
@@ -25,7 +24,7 @@ export default function Complete() {
   const fasts = fastStats(app, now);
   const { longest } = streaks(app, now);
   const avg = Math.round((keys.reduce((a, k) => a + ratioOn(app, k), 0) / keys.length) * 100);
-  const fullDays = keys.filter((k) => (app.checks[k]?.length ?? 0) >= DAILY_ROUTINE.length).length;
+  const fullDays = keys.filter((k) => ratioOn(app, k) >= 1).length;
   const w = weightSeries(app);
   const unit = app.weightUnit;
   const diff = w.length >= 2 ? toUnit(w[w.length - 1].lb, unit) - toUnit(w[0].lb, unit) : null;

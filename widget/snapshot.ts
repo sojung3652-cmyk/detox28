@@ -1,7 +1,7 @@
 // What the home-screen widget shows, computed from saved state (pure, testable).
-import { DAILY_ROUTINE, PROGRAM_DAYS } from '../data/program';
+import { PROGRAM_DAYS, WEEKS } from '../data/program';
 import type { Persisted } from '../lib/persist';
-import { activeFasts, dateKey, fastAt, formatTime, nextFast, programDay, weekOfDay } from '../lib/plan';
+import { activeFasts, dateKey, fastAt, formatTime, nextFast, programDay, routineProgress, weekOfDay } from '../lib/plan';
 
 export type WidgetSnapshot = {
   title: string; // "12일차 · 2주차"
@@ -18,11 +18,13 @@ function ampm(d: Date) {
 }
 
 export function widgetSnapshot(s: Persisted, now: Date): WidgetSnapshot {
-  const total = DAILY_ROUTINE.length;
+  let total = WEEKS[0].routine.length;
   if (!s.settings) return { title: '28일 루틴', fastLine: '앱을 열어 시작해요', fastSub: '', fasting: false, done: 0, total };
   const st = s.settings;
   const day = programDay(st.startDate, now);
-  const done = s.checks[dateKey(now)]?.length ?? 0;
+  const prog = routineProgress(st.startDate, s.checks, dateKey(now));
+  total = prog.total;
+  const done = prog.done;
   if (day < 1) return { title: `시작까지 D-${1 - day}`, fastLine: '곧 시작해요', fastSub: '', fasting: false, done: 0, total };
   if (day > PROGRAM_DAYS) return { title: '28일 완주', fastLine: '정말 수고했어요', fastSub: '', fasting: false, done, total };
 

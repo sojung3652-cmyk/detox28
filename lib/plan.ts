@@ -153,3 +153,23 @@ export function formatDateKo(d: Date) {
   const wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${wd})`;
 }
+
+/** The routine checklist for a program day (that day's week). */
+export function routineOfDay(day: number) {
+  return weekPlan(day).routine;
+}
+
+/** Checked items of a date counted against THAT date's week routine (ids from other weeks don't count). */
+export function routineProgress(startKey: string, checks: Record<string, string[]>, dk: string) {
+  const routine = routineOfDay(programDay(startKey, parseDateKey(dk)));
+  const set = new Set(checks[dk] ?? []);
+  const done = routine.filter((r) => set.has(r.id)).length;
+  return { routine, done, total: routine.length, ratio: done / routine.length };
+}
+
+/** Items that are new this week compared with last week (for the week-change notice). */
+export function addedRoutineItems(week: number) {
+  if (week <= 1) return [];
+  const prev = new Set(WEEKS[week - 2].routine.map((r) => r.id));
+  return WEEKS[week - 1].routine.filter((r) => !prev.has(r.id));
+}

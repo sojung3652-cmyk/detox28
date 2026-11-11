@@ -1,7 +1,7 @@
 // Builds the full list of local alarms for the program (pure, no native calls).
 import { MESSAGES, MessageKind, SPECIAL, SPECIAL_NOTICE, TITLES } from '../data/notifications';
-import { DAILY_ROUTINE, PROGRAM_DAYS, WATER_ALARM_TIMES } from '../data/program';
-import { FastInputs, MealTimes, activeFasts, addDays, atTime, dateKey, dateOfDay, dinnerTypeOf, fastAt, programDay } from './plan';
+import { PROGRAM_DAYS, WATER_ALARM_TIMES } from '../data/program';
+import { FastInputs, MealTimes, activeFasts, addDays, atTime, dateKey, dateOfDay, dinnerTypeOf, fastAt, programDay, routineProgress } from './plan';
 
 export const NO_CHECK_TIME = '21:00';
 export const FAST_EVE_TIME = '21:00';
@@ -48,12 +48,14 @@ function fill(s: string, vars: Record<string, string> = {}) {
   return s.replace(/\{([^}]+)\}/g, (all, k) => vars[k] ?? all);
 }
 
-const good = (checks: Record<string, string[]>, d: Date) => (checks[dateKey(d)]?.length ?? 0) / DAILY_ROUTINE.length >= STREAK_THRESHOLD;
+// 80% of THAT day's week routine.
+const good = (inp: { startDate: string; checks: Record<string, string[]> }, d: Date) =>
+  routineProgress(inp.startDate, inp.checks, dateKey(d)).ratio >= STREAK_THRESHOLD;
 
 /** Length of the run of ≥80% days ending on (and including) `end`, within the program. */
 function runEndingOn(inp: ScheduleInputs, end: Date) {
   let n = 0;
-  for (let d = end; programDay(inp.startDate, d) >= 1 && good(inp.checks, d); d = addDays(d, -1)) n++;
+  for (let d = end; programDay(inp.startDate, d) >= 1 && good(inp, d); d = addDays(d, -1)) n++;
   return n;
 }
 
@@ -74,7 +76,7 @@ export function streakDrafts(inp: ScheduleInputs, now: Date): Draft[] {
     const at = new Date(atTime(sendDay, inp.meals.breakfast).getTime() + LETTER_DELAY_MS);
     out.push({ id: `streak-${run}`, date: at, kind: `streak${run}` as MessageKind, day: dateKey(sendDay) });
   };
-  if (good(inp.checks, today)) consider(today);
+  if (good(inp, today)) consider(today);
   consider(addDays(today, -1));
   return out.filter((d) => d.date > now);
 }
@@ -152,4 +154,30 @@ export function buildAlarms(inp: ScheduleInputs, now: Date, rand: () => number =
   drafts.push(...streakDrafts(inp, now));
 
   return assignTexts(drafts.filter((d) => d.date > now), inp.lastKeys, rand);
+}
+
+/**
+ * Special-day letters whose send time has already passed (day1, week starts, complete, streaks).
+ * Used to deliver letters that were never scheduled (e.g. onboarding finished after breakfast on day 1)
+ * or never fired (phone off, alarm dropped). The caller skips ones already in the inbox.
+ */
+export function dueSpecialLetters(inp: ScheduleInputs, now: Date): AlarmSpec[] {
+  const drafts: Draft[] = [];
+  const at = (day: number) => new Date(atTime(dateOfDay(inp.startDate, day), inp.meals.breakfast).getTime() + LETTER_DELAY_MS);
+  const fixed: [number, MessageKind, string][] = [
+    [1, 'day1', 'letter-day1'],
+    [8, 'week2Start', 'letter-week2'],
+    [15, 'week3Start', 'letter-week3'],
+    [22, 'week4Start', 'letter-week4'],
+    [PROGRAM_DAYS, 'complete', 'letter-complete'],
+  ];
+  for (const [day, kind, id] of fixed) drafts.push({ id, date: at(day), kind, day: dateKey(dateOfDay(inp.startDate, day)) });
+  // Streak milestones reached on day D → letter on D+1.
+  for (let day = 1; day < PROGRAM_DAYS; day++) {
+    const run = runEndingOn(inp, dateOfDay(inp.startDate, day));
+    if ((STREAK_MILESTONES as readonly number[]).includes(run)) {
+      drafts.push({ id: `streak-${run}`, date: at(day + 1), kind: `streak${run}` as MessageKind, day: dateKey(dateOfDay(inp.startDate, day + 1)) });
+    }
+  }
+  return assignTexts(drafts.filter((d) => d.date <= now));
 }

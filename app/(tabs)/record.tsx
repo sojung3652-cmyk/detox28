@@ -7,8 +7,8 @@ import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { Icon } from '../../components/Icon';
 import { InboxCard } from '../../components/InboxCard';
 import { Card, CardHeader, Divider, Pill, T, tapFeedback } from '../../components/ui';
-import { DAILY_ROUTINE, PROGRAM_DAYS } from '../../data/program';
-import { dateKey, dateOfDay, formatDateKo, programDay } from '../../lib/plan';
+import { PROGRAM_DAYS } from '../../data/program';
+import { dateKey, dateOfDay, formatDateKo, programDay, routineProgress, weekOfDay } from '../../lib/plan';
 import { STREAK_MILESTONES, dayKeys, fastStats, fmtWeight, fromUnit, ratioOn, streaks, toUnit, weightSeries } from '../../lib/stats';
 import { useApp, useNow } from '../../lib/store';
 import { MAX_FONT_SCALE, fonts, radius, spacing, textScale, type, useTheme } from '../../theme';
@@ -183,6 +183,7 @@ function DayDetail({ dk, day }: { dk: string; day: number }) {
 
   const input = [s.input, { color: c.text, backgroundColor: c.inset, fontFamily: fonts.regular, fontSize: type.body }];
   const date = dateOfDay(app.settings!.startDate, day);
+  const prog = routineProgress(app.settings!.startDate, app.checks, dk); // that day's week routine
 
   return (
     <Card>
@@ -242,9 +243,9 @@ function DayDetail({ dk, day }: { dk: string; day: number }) {
       <Divider />
 
       <View style={{ gap: spacing.xs }}>
-        <T size="small" tone="sub">루틴 {checked.length} / {DAILY_ROUTINE.length}</T>
+        <T size="small" tone="sub">루틴 {prog.done} / {prog.total} · {weekOfDay(day)}주차 기준</T>
         <View style={s.tags}>
-          {DAILY_ROUTINE.map((r) => {
+          {prog.routine.map((r) => {
             const on = checked.includes(r.id);
             return (
               <View key={r.id} style={[s.tag, { backgroundColor: on ? c.badgeBg : 'transparent', borderColor: on ? c.badgeBg : c.line }]}>

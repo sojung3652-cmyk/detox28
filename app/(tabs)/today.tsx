@@ -6,13 +6,15 @@ import { Icon } from '../../components/Icon';
 import { Ring } from '../../components/Ring';
 import { Badge, Button, Card, CardHeader, CheckRow, T, tapFeedback } from '../../components/ui';
 import { POST_FAST_NOTE, menusFor } from '../../data/menus';
-import { DAILY_ROUTINE, DINNER_LABEL, FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, WATER_GOAL } from '../../data/program';
+import { DINNER_LABEL, FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, WATER_GOAL } from '../../data/program';
 import { pickTime, timeKo } from '../../lib/pickers';
 import {
   Fast,
   FastInputs,
   activeFasts,
   addDays,
+  addedRoutineItems,
+  routineProgress,
   atTime,
   dateKey,
   dinnerTypeOf,
@@ -82,6 +84,10 @@ function InProgram({ day, now }: { day: number; now: Date }) {
   const dinner = dinnerTypeOf(st.startDate, day);
   const dk = dateKey(now);
   const checked = app.checks[dk] ?? [];
+  const prog = routineProgress(st.startDate, app.checks, dk); // this week's routine only
+  const added = addedRoutineItems(plan.week);
+  const weekFirstDay = day === (plan.week - 1) * 7 + 1;
+  const showAdded = weekFirstDay && added.length > 0 && !app.routineNoticeSeen.includes(plan.week);
   const inputs: FastInputs = { startDate: st.startDate, fastStart: st.fastStart, overrides: app.fastOverrides, stopped: app.stoppedFasts };
 
   return (
@@ -99,6 +105,16 @@ function InProgram({ day, now }: { day: number; now: Date }) {
 
       <GoalCard week={plan.week} />
 
+      {showAdded ? (
+        <Card style={s.notice}>
+          <Icon name="spark" size={18} />
+          <T size="small" style={{ flex: 1 }}>이번 주 새로 추가된 루틴: {added.map((r) => r.label).join(', ')}</T>
+          <Pressable accessibilityRole="button" accessibilityLabel="안내 닫기" hitSlop={10} onPress={() => app.dismissRoutineNotice(plan.week)}>
+            <Icon name="close" size={18} />
+          </Pressable>
+        </Card>
+      ) : null}
+
       {day === PROGRAM_DAYS ? (
         <Card>
           <T>마지막 날이에요. 4주 동안의 기록을 모아봤어요.</T>
@@ -109,9 +125,9 @@ function InProgram({ day, now }: { day: number; now: Date }) {
       <FastCard day={day} now={now} inputs={inputs} />
 
       <Card>
-        <CardHeader title="기본 루틴" right={<T size="small" tone="sub">{checked.length} / {DAILY_ROUTINE.length}</T>} />
+        <CardHeader title="기본 루틴" right={<T size="small" tone="sub">{prog.done} / {prog.total}</T>} />
         <View>
-          {DAILY_ROUTINE.map((item) => (
+          {prog.routine.map((item) => (
             <CheckRow key={item.id} label={item.label} detail={item.detail} checked={checked.includes(item.id)} onToggle={() => app.toggleCheck(dk, item.id)} />
           ))}
         </View>
@@ -300,14 +316,16 @@ function NextUpCard({ day, now, inputs }: { day: number; now: Date; inputs: Fast
   const nearEnd = fasts.find((f) => Math.abs(f.end.getTime() - now.getTime()) < 3 * 3600000);
   const dk = dateKey(now);
   const week = weekPlan(day).week;
-  const pick = nearEnd ? seededPick(menusFor('postfast', Math.max(2, week)), dk, 1)[0] : seededPick(menusFor('snack', week), dk, 1)[0];
+  const post = nearEnd ? seededPick(menusFor('postfast', Math.max(2, week)), dk, 1)[0] : undefined;
+  // Snack recommendation: only from this week's snack list in data/program.ts (snackPicks).
+  const snack = seededPick(weekPlan(day).snackPicks, dk, 1)[0];
   return (
     <Card style={[s.half, { flexBasis: 150 * textScale() }]}>
       <CardHeader title="다음 할 일" icon="spark" />
       <View style={{ gap: spacing.xs }}>
         <T size="caption" tone="faint">{nearEnd ? '단식 후 첫 끼' : '오늘의 간식'}</T>
-        <T medium>{pick?.name ?? '물 한 잔'}</T>
-        <T size="caption" tone="sub" numberOfLines={2}>{nearEnd ? POST_FAST_NOTE : pick?.ingredients.join(', ')}</T>
+        <T medium accessibilityLabel={'추천: ' + (post?.name ?? snack)}>{post?.name ?? snack}</T>
+        <T size="caption" tone="sub" numberOfLines={2}>{post ? POST_FAST_NOTE : '이번 주 간식 중에서 골랐어요'}</T>
       </View>
     </Card>
   );
@@ -358,5 +376,6 @@ const s = StyleSheet.create({
   // 4 per row at any card width (two rows of 4 = goal of 8).
   cup: { flexBasis: '21%', flexGrow: 1, maxWidth: 64, height: 40, borderRadius: radius.inner - 2, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   memo: { minHeight: 88, borderRadius: radius.inner, padding: spacing.md, textAlignVertical: 'top' },
+  notice: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
   season: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingHorizontal: spacing.xs },
 });

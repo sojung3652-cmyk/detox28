@@ -38,23 +38,37 @@ export const DEFAULT_FAST_START = '20:00';
 export const WATER_GOAL = 8;
 export const WATER_ALARM_TIMES = ['10:00', '14:00', '17:00'];
 
-// ───────────────────────── 매일 기본 루틴 ─────────────────────────
+// ───────────────────────── 주차별 기본 루틴 ─────────────────────────
+// 매일 체크리스트. 각 주차의 routine에 넣어요. id는 체크 기록에 쓰이니 바꾸지 마세요.
 
 export type RoutineItem = { id: string; label: string; detail?: string };
 
-/** 4주 내내 공통으로 매일 체크하는 항목 */
-export const DAILY_ROUTINE: RoutineItem[] = [
-  { id: 'broccoli', label: '데친 브로콜리' },
-  { id: 'greenbean', label: '데친 그린빈' },
-  { id: 'tomato', label: '토마토' },
-  { id: 'bellpepper', label: '벨페퍼' },
-  { id: 'carrot', label: '볶은 당근' },
-  { id: 'egg', label: '계란', detail: '계란후라이 4개 또는 삶은 계란 2개' },
-  { id: 'nuts', label: '견과류', detail: '아몬드, 브라질넛, 호두 등' },
-  { id: 'berry', label: '베리류', detail: '주로 블루베리 · 미국 딸기는 OK' },
-  { id: 'natto', label: '낫토' },
-  { id: 'oliveoil', label: '올리브오일 5스푼', detail: '하루 합계' },
-];
+const R = {
+  broccoli: { id: 'broccoli', label: '브로콜리', detail: '데쳐서' },
+  greenbean: { id: 'greenbean', label: '그린빈', detail: '데쳐서' },
+  tomato: { id: 'tomato', label: '토마토' },
+  avocado: { id: 'avocado', label: '아보카도' },
+  cabbage: { id: 'cabbage', label: '양배추' },
+  bellpepper: { id: 'bellpepper', label: '파프리카', detail: '벨페퍼' },
+  cucumber: { id: 'cucumber', label: '오이' },
+  carrot: { id: 'carrot', label: '당근', detail: '볶아서' },
+  egg: { id: 'egg', label: '달걀', detail: '계란후라이 4개 또는 삶은 계란 2개' },
+  tofu: { id: 'tofu', label: '두부' },
+  nuts: { id: 'nuts', label: '견과류', detail: '아몬드, 브라질넛, 호두 등' },
+  blueberry: { id: 'blueberry', label: '블루베리' },
+  banana: { id: 'banana', label: '바나나' },
+  apple: { id: 'apple', label: '사과' },
+  walnut: { id: 'walnut', label: '호두' },
+  sweetpotato: { id: 'sweetpotato', label: '고구마', detail: '삶아서' },
+  berry: { id: 'berry', label: '베리류', detail: '미국 딸기도 OK' },
+  natto: { id: 'natto', label: '낫토' },
+  oliveoil: { id: 'oliveoil', label: '올리브오일', detail: '하루 합계 5스푼' },
+} satisfies Record<string, RoutineItem>;
+
+const ROUTINE_W1 = [R.broccoli, R.greenbean, R.tomato, R.avocado, R.bellpepper, R.carrot, R.egg, R.tofu, R.natto, R.oliveoil];
+const ROUTINE_W2 = [R.broccoli, R.greenbean, R.tomato, R.avocado, R.cabbage, R.bellpepper, R.cucumber, R.carrot, R.egg, R.nuts, R.blueberry, R.natto, R.oliveoil];
+const ROUTINE_W3 = [...ROUTINE_W2.slice(0, 11), R.banana, R.apple, R.natto, R.oliveoil];
+const ROUTINE_W4 = [R.broccoli, R.greenbean, R.tomato, R.avocado, R.cabbage, R.bellpepper, R.carrot, R.egg, R.walnut, R.sweetpotato, R.berry, R.apple, R.natto, R.oliveoil];
 
 // ───────────────────────── 주차별 플랜 ─────────────────────────
 
@@ -65,6 +79,10 @@ export type WeekPlan = {
   /** 이번 주 목표 한 문장 (오늘 화면 '이번 주 목표' 카드, 새 주차 알람) */
   goal: string;
   ingredients: string[];
+  /** 매일 체크리스트 (오늘 화면 "기본 루틴") */
+  routine: RoutineItem[];
+  /** "다음 할 일" 간식 추천 (이 목록에서만 랜덤) */
+  snackPicks: string[];
   /** 저녁이 "탄수화물 X"인 요일. 나머지 요일은 일반식 */
   lowCarbDinnerDays: Weekday[];
   /** 이 요일 저녁 식사 후 FAST_HOURS 동안 단식 */
@@ -78,6 +96,8 @@ export type WeekPlan = {
 export const WEEKS: WeekPlan[] = [
   {
     week: 1,
+    routine: ROUTINE_W1,
+    snackPicks: ['요거트', '찐 닭가슴살', '생오이 + 쌈장'],
     title: '장내 환경 바꾸기',
     goal: '탄수화물을 줄이고 채소와 단백질로 몸을 리셋해요',
     ingredients: ['브로콜리', '그린빈', '토마토', '아보카도', '파프리카', '당근', '달걀', '두부'],
@@ -96,6 +116,8 @@ export const WEEKS: WeekPlan[] = [
   },
   {
     week: 2,
+    routine: ROUTINE_W2,
+    snackPicks: ['두유', '요거트', '두부', '카카오닙스', '아보카도 + 으깬 달걀'],
     title: '단식 시작',
     goal: '주 1회 24시간 단식에 적응해요',
     ingredients: [
@@ -117,6 +139,8 @@ export const WEEKS: WeekPlan[] = [
   },
   {
     week: 3,
+    routine: ROUTINE_W3,
+    snackPicks: ['두유', '찐 고구마', '요거트 + 베리류', '찐 감자', '다크초콜릿 85% 이상', '아몬드밀크 + 바닐라 아이스크림'],
     title: '효과가 보이는 주',
     goal: '주 2회 단식, 몸이 가벼워지는 걸 느껴봐요',
     ingredients: [
@@ -138,6 +162,8 @@ export const WEEKS: WeekPlan[] = [
   },
   {
     week: 4,
+    routine: ROUTINE_W4,
+    snackPicks: ['두유', '요거트 + 베리류', '키위', '배', '말린 망고', '다크초콜릿 85% 이상', '바나나칩', '무염 크래커 + 치즈 + 딸기', '아몬드밀크 + 바닐라 아이스크림'],
     title: '단단하게 마무리',
     goal: '주 3회 단식, 밀가루를 멀리하고 근육량을 지켜요',
     ingredients: [

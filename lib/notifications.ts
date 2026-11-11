@@ -177,3 +177,24 @@ export async function sendAllKindsPreview(st: Persisted): Promise<Letter[]> {
   }
   return specs.filter(isLetter).map(toLetter);
 }
+
+export type ScheduledRow = { id: string; kind: string; at: number | null; text: string };
+
+/** Debug: what is actually scheduled on the phone right now (from the OS), earliest first. */
+export async function listScheduled(): Promise<{ permission: boolean; exact: boolean; rows: ScheduledRow[] }> {
+  const permission = await hasNotificationPermission().catch(() => false);
+  const exact = await hasExactAlarmPermission().catch(() => false);
+  let reqs: Notifications.NotificationRequest[] = [];
+  try {
+    reqs = await Notifications.getAllScheduledNotificationsAsync();
+  } catch {
+    reqs = [];
+  }
+  const rows = reqs
+    .map((r) => {
+      const d = (r.content.data ?? {}) as { kind?: string; at?: number; text?: string };
+      return { id: r.identifier, kind: d.kind ?? '-', at: typeof d.at === 'number' ? d.at : null, text: d.text ?? r.content.body ?? '' };
+    })
+    .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+  return { permission, exact, rows };
+}

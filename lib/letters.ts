@@ -38,14 +38,25 @@ export async function saveOutbox(list: Letter[]) {
   await AsyncStorage.setItem(OUTBOX_KEY, JSON.stringify(list));
 }
 
-/** Moves due outbox letters into the inbox. Pure; inbox entries are unique by id+at. */
+/** Dedupe key: which text, on which day. A letter is delivered at most once per key+day. */
+export const deliveryKey = (l: { key: string; at: number }) => {
+  const d = new Date(l.at);
+  return `${l.key}@${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+
+/** Adds letters not delivered yet (by messageKey + date). Pure. */
+export function addMissing(inbox: InboxEntry[], letters: Letter[]) {
+  const have = new Set(inbox.map(deliveryKey));
+  const added = letters.filter((l) => !have.has(deliveryKey(l))).map((l): InboxEntry => ({ ...l, opened: false, popped: false }));
+  return { inbox: added.length ? [...inbox, ...added].sort((a, b) => a.at - b.at) : inbox, added: added.length };
+}
+
+/** Moves due outbox letters into the inbox. Pure; never adds the same messageKey + date twice. */
 export function moveDue(inbox: InboxEntry[], outbox: Letter[], now: number) {
   const due = outbox.filter((l) => l.at <= now);
   const rest = outbox.filter((l) => l.at > now);
-  const seen = new Set(inbox.map((e) => `${e.id}@${e.at}`));
-  const added = due.filter((l) => !seen.has(`${l.id}@${l.at}`)).map((l): InboxEntry => ({ ...l, opened: false, popped: false }));
-  const next = added.length ? [...inbox, ...added].sort((a, b) => a.at - b.at) : inbox;
-  return { inbox: next, outbox: rest, added: added.length };
+  const r = addMissing(inbox, due);
+  return { inbox: r.inbox, outbox: rest, added: r.added };
 }
 
 /** Most recent key per kind, so new random picks don't repeat the last delivered text. */

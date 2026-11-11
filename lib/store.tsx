@@ -2,8 +2,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState, Platform } from 'react-native';
 import { BodyLog, EMPTY, Persisted, Settings, loadState, normalize, saveState } from './persist';
 import { dateKey, parseDateKey, programDay } from './plan';
-import { cancelAlarm, cancelAll, rescheduleAll, scheduledCount, sendAllKindsPreview, syncStreakAlarms } from './notifications';
-import { InboxEntry, Letter, letterRef, loadOutbox, moveDue, saveOutbox } from './letters';
+import { cancelAlarm, cancelAll, rescheduleAll, scheduleInputs, scheduledCount, sendAllKindsPreview, syncStreakAlarms } from './notifications';
+import { InboxEntry, Letter, addMissing, letterRef, loadOutbox, moveDue, saveOutbox } from './letters';
+import { dueSpecialLetters } from './schedule';
 import { refreshWidget } from './widgetBridge';
 import { ParsedAction, applyAction } from './actions';
 import type { ThemePref } from '../theme';
@@ -30,6 +31,7 @@ type Ctx = Persisted & {
   markLetters: (refs: string[], patch: Partial<Pick<InboxEntry, 'opened' | 'popped'>>) => void;
   previewAllKinds: () => Promise<void>;
   markCelebrated: (n: number) => void;
+  dismissRoutineNotice: (week: number) => void;
   setTheme: (t: ThemePref) => void;
   setWeightUnit: (u: 'lb' | 'kg') => void;
   setDebugOffset: (days: number) => void;
@@ -55,9 +57,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncInbox = useCallback(async () => {
+    const now = Date.now(); // real time, not the debug offset
     const ob = await loadOutbox();
-    const r = moveDue(stateRef.current.inbox, ob, Date.now()); // real time, not the debug offset
-    if (r.added) update((p) => ({ ...p, inbox: moveDue(p.inbox, ob, Date.now()).inbox }));
+    const r = moveDue(stateRef.current.inbox, ob, now);
+    // Special-day letters whose time passed but never arrived (never scheduled, phone off, alarm dropped).
+    const inp = scheduleInputs(stateRef.current);
+    const missed = inp ? dueSpecialLetters(inp, new Date(now)).map((a) => ({ id: a.id, at: a.date.getTime(), kind: a.kind, key: a.key, text: a.text, special: a.special })) : [];
+    const m = addMissing(r.inbox, missed);
+    if (r.added || m.added) update((p) => ({ ...p, inbox: addMissing(moveDue(p.inbox, ob, now).inbox, missed).inbox }));
     if (r.outbox.length !== ob.length) await saveOutbox(r.outbox);
   }, [update]);
 
@@ -162,6 +169,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Web preview has no notifications: deliver straight to the inbox so the envelopes can be checked.
         if (Platform.OS === 'web') update((s) => ({ ...s, inbox: moveDue(s.inbox, letters.map((l) => ({ ...l, at: Date.now() })), Date.now()).inbox }));
       },
+      dismissRoutineNotice: (week) => update((s) => ({ ...s, routineNoticeSeen: [...s.routineNoticeSeen, week] })),
       markCelebrated: (n) => update((s) => ({ ...s, celebrated: [...s.celebrated, n] })),
       setTheme: (theme) => update((s) => ({ ...s, theme })),
       setWeightUnit: (weightUnit) => update((s) => ({ ...s, weightUnit })),
