@@ -39,6 +39,17 @@
     ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "c9f5ddbb-a3bd-4417-9ecc-3423410a9fd1"
+      }
+    },
+    "owner": "kimsj3652"
   }
 }
