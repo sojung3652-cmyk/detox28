@@ -7,6 +7,7 @@ import { Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { parseAction, registerActionTask, setupCategories } from '../lib/actions';
 import { LetterHost } from '../components/LetterHost';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { AppProvider, useApp } from '../lib/store';
 import { ThemeProvider, fonts, useTheme } from '../theme';
 import '../lib/notifications'; // registers the foreground notification handler
@@ -57,6 +58,7 @@ function Nav() {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: c.bg } }} />
+      <UpdateBanner />
     </View>
   );
 }

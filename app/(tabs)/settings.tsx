@@ -16,6 +16,7 @@ import {
 import { pickDate, pickTime, timeKo } from '../../lib/pickers';
 import { formatDateKo, parseDateKey, programDay } from '../../lib/plan';
 import { SHOW_DEBUG, Settings, useApp, useNow } from '../../lib/store';
+import { CheckResult, applyNow, checkAndFetch, versionInfo } from '../../lib/updates';
 import { ThemePref, spacing, useTheme } from '../../theme';
 
 const MEALS = [
@@ -138,6 +139,8 @@ export default function SettingsScreen() {
         <Notice text={SAFETY_NOTICE} />
 
         {SHOW_DEBUG ? <DebugCard /> : null}
+
+        <VersionCard />
       </ScrollView>
     </SafeAreaView>
   );
@@ -168,6 +171,42 @@ function PermLine({ label, ok, onFix }: { label: string; ok: boolean | null; onF
         </Pressable>
       ) : null}
     </View>
+  );
+}
+
+/** Bottom of settings: current version + manual update check. */
+function VersionCard() {
+  const v = versionInfo();
+  const [state, setState] = useState<'idle' | 'checking' | CheckResult>('idle');
+  const msg: Record<string, string> = {
+    checking: '확인하는 중…',
+    latest: '최신 버전이에요.',
+    downloaded: '새로운 버전이 준비됐어요.',
+    error: '확인하지 못했어요. 인터넷 연결을 확인해 주세요. 지금 버전은 그대로 쓸 수 있어요.',
+    disabled: '개발 모드에서는 업데이트를 확인할 수 없어요.',
+  };
+  return (
+    <Card>
+      <CardHeader title="버전 정보" icon="info" right={<T size="small" tone="sub">v{v.appVersion}</T>} />
+      <View style={{ gap: 2 }}>
+        <T size="small">{v.label}</T>
+        <T size="caption" tone="faint">{v.detail}</T>
+      </View>
+      {state !== 'idle' ? <T size="small" tone="sub">{msg[state]}</T> : null}
+      {state === 'downloaded' ? (
+        <Button icon="download" label="지금 적용하기" onPress={applyNow} />
+      ) : (
+        <Button
+          kind="outline"
+          label="업데이트 확인"
+          disabled={state === 'checking'}
+          onPress={async () => {
+            setState('checking');
+            setState(await checkAndFetch());
+          }}
+        />
+      )}
+    </Card>
   );
 }
 

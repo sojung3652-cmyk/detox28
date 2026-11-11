@@ -84,6 +84,14 @@
         "projectId": "c9f5ddbb-a3bd-4417-9ecc-3423410a9fd1"
       }
     },
-    "owner": "kimsj3652"
+    "owner": "kimsj3652",
+    "updates": {
+      "url": "https://u.expo.dev/c9f5ddbb-a3bd-4417-9ecc-3423410a9fd1",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    }
   }
 }
