@@ -52,7 +52,7 @@ export default function Onboarding() {
         {step === 0 && (
           <>
             <View style={st.hero}>
-              <T size="h1" medium style={{ textAlign: 'center' }}>28일 루틴</T>
+              <T size="h1" medium style={{ textAlign: 'center' }}>Detox28</T>
               <T tone="sub" style={{ textAlign: 'center' }}>4주 동안 식사, 물, 단식을{'\n'}알람으로 같이 챙길게요.</T>
             </View>
             <Notice text={SAFETY_NOTICE} />

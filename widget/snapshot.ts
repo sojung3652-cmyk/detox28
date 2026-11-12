@@ -19,7 +19,7 @@ function ampm(d: Date) {
 
 export function widgetSnapshot(s: Persisted, now: Date): WidgetSnapshot {
   let total = WEEKS[0].routine.length;
-  if (!s.settings) return { title: '28일 루틴', fastLine: '앱을 열어 시작해요', fastSub: '', fasting: false, done: 0, total };
+  if (!s.settings) return { title: 'Detox28', fastLine: '앱을 열어 시작해요', fastSub: '', fasting: false, done: 0, total };
   const st = s.settings;
   const day = programDay(st.startDate, now);
   const prog = routineProgress(st.startDate, s.checks, dateKey(now));

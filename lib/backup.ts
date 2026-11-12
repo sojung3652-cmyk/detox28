@@ -29,6 +29,6 @@ export async function importBackup(): Promise<unknown | null> {
   } catch {
     throw new Error('JSON 파일이 아니에요.');
   }
-  if (parsed?.format !== FORMAT || typeof parsed.state !== 'object') throw new Error('28일 루틴 백업 파일이 아니에요.');
+  if (parsed?.format !== FORMAT || typeof parsed.state !== 'object') throw new Error('Detox28 백업 파일이 아니에요.');
   return parsed.state;
 }
