@@ -53,6 +53,9 @@ export const MESSAGES = {
   fastTomorrow: [
     '내일은 단식을 하는 날입니다! 원하는 시간에 맞춰 설정을 해주세요, 남은 하루도 화이팅!',
   ],
+  start: [
+    '즐거운 디톡스 여정의 시작! 28일간 더 멋진 나로 거듭나 보기로 해요, 저도 같이 할게요. 할 수 있다, 화이팅!',
+  ],
   day1: [
     '즐거운 디톡스 플랜, 다시 시작하신 것을 축하합니다. 28일 디톡스 함께라면 걱정 없다! 같이 하루하루 즐겁게 해봐요, 화이팅!',
   ],
@@ -91,7 +94,7 @@ export const MESSAGES = {
 export type MessageKind = keyof typeof MESSAGES;
 
 /** 특별한 날 알람: 알림창엔 내용 없이 편지 도착만 알려요. */
-export const SPECIAL: MessageKind[] = ['day1', 'week2Start', 'week3Start', 'week4Start', 'complete', 'streak7', 'streak14', 'streak21'];
+export const SPECIAL: MessageKind[] = ['start', 'day1', 'week2Start', 'week3Start', 'week4Start', 'complete', 'streak7', 'streak14', 'streak21'];
 
 export const SPECIAL_NOTICE = { title: '편지가 도착했어요', body: '열어서 확인해보세요' };
 
@@ -108,6 +111,7 @@ export const TITLES: Record<MessageKind, string> = {
   fastTomorrow: '내일은 단식하는 날',
   noCheckToday: '오늘의 디톡스',
   dMinus3: '디톡스 D-3',
+  start: SPECIAL_NOTICE.title,
   day1: SPECIAL_NOTICE.title,
   week2Start: SPECIAL_NOTICE.title,
   week3Start: SPECIAL_NOTICE.title,
@@ -131,6 +135,7 @@ export const LABELS: Record<MessageKind, string> = {
   fastTomorrow: '내일 단식 예고',
   noCheckToday: '오늘의 디톡스',
   dMinus3: '디톡스 D-3',
+  start: '디톡스 시작 편지',
   day1: '1일차 편지',
   week2Start: '2주차 시작 편지',
   week3Start: '3주차 시작 편지',
