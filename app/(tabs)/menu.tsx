@@ -143,6 +143,7 @@ function RoutineCard({ week }: { week: number }) {
       </Pressable>
       {open ? (
         <Animated.View entering={FadeIn.duration(220)} style={[s.steps, { borderTopColor: c.line }]}>
+          <T size="small" tone="sub" style={{ marginBottom: spacing.xs }}>{WEEKS[week - 1].routineWhy}</T>
           {routine.map((r) => (
             <View key={r.id} style={s.routineRow}>
               <T size="small" style={{ flex: 1 }}>
