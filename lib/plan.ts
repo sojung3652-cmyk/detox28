@@ -173,3 +173,10 @@ export function addedRoutineItems(week: number) {
   const prev = new Set(WEEKS[week - 2].routine.map((r) => r.id));
   return WEEKS[week - 1].routine.filter((r) => !prev.has(r.id));
 }
+
+/** Items in the previous week's routine that this week drops. */
+export function removedRoutineItems(week: number) {
+  if (week <= 1) return [];
+  const cur = new Set(WEEKS[week - 1].routine.map((r) => r.id));
+  return WEEKS[week - 2].routine.filter((r) => !cur.has(r.id));
+}

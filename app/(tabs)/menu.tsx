@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 import { Button, Pill, T } from '../../components/ui';
 import { MenuCategory, MenuItem, POST_FAST_NOTE, menusFor } from '../../data/menus';
 import { PROGRAM_DAYS, WEEKS } from '../../data/program';
-import { activeFasts, dinnerTypeOf, programDay, sameDay, weekOfDay } from '../../lib/plan';
+import { activeFasts, addedRoutineItems, dinnerTypeOf, programDay, removedRoutineItems, sameDay, weekOfDay } from '../../lib/plan';
 import { useApp, useNow } from '../../lib/store';
 import { radius, spacing, useTheme } from '../../theme';
 
@@ -78,6 +78,7 @@ export default function MenuScreen() {
               <Button kind="outline" icon="left" label="이번 주로 돌아가기" onPress={() => selectWeek(currentWeek)} />
             </View>
           ) : null}
+          <RoutineCard week={week} />
         </View>
 
         <View style={s.row}>
@@ -126,6 +127,44 @@ function WeekChip({ week, selected, current, onPress }: { week: number; selected
   );
 }
 
+/** This week's daily routine; items new vs. last week get a "새로" tag, dropped ones are listed below. */
+function RoutineCard({ week }: { week: number }) {
+  const { c } = useTheme();
+  const [open, setOpen] = useState(false);
+  const routine = WEEKS[week - 1].routine;
+  const added = new Set(addedRoutineItems(week).map((r) => r.id));
+  const removed = removedRoutineItems(week);
+  return (
+    <Animated.View layout={LinearTransition.duration(200)} style={[s.card, { backgroundColor: c.card }]}>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} style={s.cardHead}>
+        <T medium style={{ flex: 1 }}>{week}주차 루틴 · {routine.length}개</T>
+        {added.size ? <T size="caption" tone="sub">새로 {added.size}개</T> : null}
+        <Icon name={open ? 'down' : 'right'} size={18} color={c.faint} />
+      </Pressable>
+      {open ? (
+        <Animated.View entering={FadeIn.duration(220)} style={[s.steps, { borderTopColor: c.line }]}>
+          {routine.map((r) => (
+            <View key={r.id} style={s.routineRow}>
+              <T size="small" style={{ flex: 1 }}>
+                {r.label}
+                {r.detail ? <T size="small" tone="sub"> · {r.detail}</T> : null}
+              </T>
+              {added.has(r.id) ? (
+                <View style={[s.tag, { backgroundColor: c.badgeBg }]}>
+                  <T size="caption" medium color={c.badgeText}>새로</T>
+                </View>
+              ) : null}
+            </View>
+          ))}
+          {removed.length ? (
+            <T size="caption" tone="sub">{week - 1}주차에서 빠진 것: {removed.map((r) => r.label).join(', ')}</T>
+          ) : null}
+        </Animated.View>
+      ) : null}
+    </Animated.View>
+  );
+}
+
 function MenuCard({ item, open, onPress }: { item: MenuItem; open: boolean; onPress: () => void }) {
   const { c } = useTheme();
   return (
@@ -166,5 +205,7 @@ const s = StyleSheet.create({
   card: { borderRadius: radius.card, padding: spacing.xl, gap: spacing.md },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  routineRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 28 },
+  tag: { borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2 },
   steps: { borderTopWidth: 1, paddingTop: spacing.md, gap: spacing.sm },
 });
