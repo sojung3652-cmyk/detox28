@@ -20,6 +20,8 @@ type Ctx = Persisted & {
   offsetMs: number;
   saveSettings: (s: Settings) => Promise<void>;
   toggleCheck: (day: string, id: string) => void;
+  /** Sets the whole checklist of a day at once (전체 체크 / 전체 해제). */
+  setChecks: (day: string, ids: string[]) => void;
   setWater: (day: string, n: number) => void;
   setNote: (day: string, text: string) => void;
   setIncident: (day: string, text: string) => void;
@@ -120,6 +122,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [loaded, reschedule, syncInbox]);
 
+  const setChecks = useCallback(
+    (day: string, ids: string[]) => {
+      const before = stateRef.current.checks[day]?.length ?? 0;
+      update((s) => ({ ...s, checks: { ...s.checks, [day]: ids } }));
+      const st = stateRef.current;
+      if (!st.settings) return;
+      // First check of the day cancels that day's 21:00 "did you forget?" alarm.
+      if (before === 0 && ids.length > 0) {
+        cancelAlarm('nocheck-' + programDay(st.settings.startDate, parseDateKey(day))).catch(() => {});
+      }
+      // A reached (or lost) 7/14/21 streak schedules (or cancels) next morning's letter.
+      syncStreakAlarms(st).catch(() => {});
+    },
+    [update],
+  );
+
   const value = useMemo<Ctx>(
     () => ({
       ...state,
@@ -138,21 +156,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await reschedule(stateRef.current);
       },
       toggleCheck: (day, id) => {
-        const before = stateRef.current.checks[day]?.length ?? 0;
-        update((s) => {
-          const cur = s.checks[day] ?? [];
-          const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-          return { ...s, checks: { ...s.checks, [day]: next } };
-        });
-        const st = stateRef.current;
-        if (!st.settings) return;
-        // First check of the day cancels that day's 21:00 "did you forget?" alarm.
-        if (before === 0 && (st.checks[day]?.length ?? 0) > 0) {
-          cancelAlarm('nocheck-' + programDay(st.settings.startDate, parseDateKey(day))).catch(() => {});
-        }
-        // A reached (or lost) 7/14/21 streak schedules (or cancels) next morning's letter.
-        syncStreakAlarms(st).catch(() => {});
+        const cur = stateRef.current.checks[day] ?? [];
+        setChecks(day, cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
       },
+      setChecks,
       setWater: (day, n) => update((s) => ({ ...s, water: { ...s.water, [day]: Math.max(0, n) } })),
       setNote: (day, text) => update((s) => ({ ...s, notes: { ...s.notes, [day]: text } })),
       setIncident: (day, text) => update((s) => ({ ...s, incidents: { ...s.incidents, [day]: text } })),
@@ -219,7 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         update(() => EMPTY);
       },
     }),
-    [state, loaded, update, reschedule, syncInbox],
+    [state, loaded, update, reschedule, syncInbox, setChecks],
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;

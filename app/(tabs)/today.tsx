@@ -106,6 +106,7 @@ function Finished() {
 }
 
 function InProgram({ day, now }: { day: number; now: Date }) {
+  const { c } = useTheme();
   const app = useApp();
   const st = app.settings!;
   const plan = weekPlan(day);
@@ -153,7 +154,28 @@ function InProgram({ day, now }: { day: number; now: Date }) {
       <FastCard day={day} now={now} inputs={inputs} />
 
       <Card>
-        <CardHeader title="기본 루틴" right={<T size="small" tone="sub">{prog.done} / {prog.total}</T>} />
+        <CardHeader
+          title="기본 루틴"
+          right={
+            <View style={s.allRow}>
+              <T size="small" tone="sub">{prog.done} / {prog.total}</T>
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => {
+                  tapFeedback();
+                  // All of this week's items done → clear them; otherwise check them all (other ids kept as is).
+                  const ids = prog.routine.map((r) => r.id);
+                  const allDone = prog.done === prog.total;
+                  app.setChecks(dk, allDone ? checked.filter((x) => !ids.includes(x)) : [...new Set([...checked, ...ids])]);
+                }}
+                style={[s.allBtn, { borderColor: c.lineSoft }]}
+              >
+                <T size="caption" medium>{prog.done === prog.total ? '전체 해제' : '전체 체크'}</T>
+              </Pressable>
+            </View>
+          }
+        />
         <View>
           {prog.routine.map((item) => (
             <CheckRow key={item.id} label={item.label} detail={item.detail} checked={checked.includes(item.id)} onToggle={() => app.toggleCheck(dk, item.id)} />
@@ -407,6 +429,8 @@ const s = StyleSheet.create({
   cups: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   // 4 per row at any card width (two rows of 4 = goal of 8).
   cup: { flexBasis: '21%', flexGrow: 1, maxWidth: 64, height: 40, borderRadius: radius.inner - 2, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  allRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  allBtn: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   memo: { minHeight: 88, borderRadius: radius.inner, padding: spacing.md, textAlignVertical: 'top' },
   notice: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
   season: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingHorizontal: spacing.xs },

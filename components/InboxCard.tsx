@@ -16,27 +16,48 @@ function when(at: number) {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** 받은 편지함: every alarm text received so far, newest first. Tap → same envelope motion. */
+/**
+ * 받은 편지함: every alarm text received so far, newest first. Folded by default so the record tab stays short.
+ * An unopened letter opens with the envelope motion; an already opened one just unfolds its text in place.
+ */
 export function InboxCard() {
   const { c } = useTheme();
   const app = useApp();
   const { openLetter } = useLetters();
   const [all, setAll] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const list = [...app.inbox].sort((a, b) => b.at - a.at);
   const unread = list.filter((e) => !e.opened).length;
   const shown = all ? list : list.slice(0, PAGE);
 
   return (
     <Card>
-      <CardHeader title="받은 편지함" icon="note" right={<T size="small" tone="sub">{unread ? `안 읽음 ${unread}` : `${list.length}통`}</T>} />
-      {list.length === 0 ? (
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)}>
+        <CardHeader
+          title="받은 편지함"
+          icon="note"
+          right={
+            <View style={styles.headRight}>
+              <T size="small" tone="sub">{unread ? `안 읽음 ${unread}` : `${list.length}통`}</T>
+              <Icon name={open ? 'down' : 'right'} size={18} color={c.faint} />
+            </View>
+          }
+        />
+      </Pressable>
+      {!open ? null : list.length === 0 ? (
         <T size="small" tone="sub">알람이 오면 여기에 편지로 모여요.</T>
       ) : (
         <View>
           {shown.map((e, i) => (
             <View key={letterRef(e)}>
               {i > 0 ? <Divider /> : null}
-              <Pressable accessibilityRole="button" accessibilityLabel={`${LABELS[e.kind]} 편지 열기`} onPress={() => openLetter(e)} style={styles.row}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${LABELS[e.kind]} 편지 ${e.opened ? '보기' : '열기'}`}
+                onPress={() => (e.opened ? setExpanded(expanded === letterRef(e) ? null : letterRef(e)) : openLetter(e))}
+                style={styles.row}
+              >
                 <View style={styles.icon}>
                   {e.special ? (
                     // Small seal mark for special-day letters.
@@ -53,7 +74,7 @@ export function InboxCard() {
                     <T size="small" medium style={{ flex: 1 }}>{LABELS[e.kind]}</T>
                     <T size="caption" tone="faint">{when(e.at)}</T>
                   </View>
-                  <T size="small" tone="sub" numberOfLines={1}>
+                  <T size="small" tone={expanded === letterRef(e) ? 'text' : 'sub'} numberOfLines={expanded === letterRef(e) ? undefined : 1}>
                     {e.special && !e.opened ? '봉인된 편지 · 눌러서 열어보기' : e.text}
                   </T>
                 </View>
@@ -76,5 +97,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   icon: { width: 24, alignItems: 'center' },
   head: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  headRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { width: 8, height: 8, borderRadius: 4 },
 });
