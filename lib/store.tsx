@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { BodyLog, EMPTY, Persisted, Settings, loadState, normalize, saveState } from './persist';
-import { dateKey, parseDateKey, programDay } from './plan';
+import { dateKey, parseDateKey, programDay, setPauses } from './plan';
+import { endRound, pauseRound, resumeRound, setRepeat, shouldRollover } from './round';
 import { cancelAlarm, cancelAll, rescheduleAll, scheduleInputs, scheduledCount, sendAllKindsPreview, syncStreakAlarms } from './notifications';
 import { InboxEntry, Letter, addMissing, letterRef, loadOutbox, moveDue, saveOutbox } from './letters';
 import { dueSpecialLetters } from './schedule';
@@ -21,6 +22,12 @@ type Ctx = Persisted & {
   toggleCheck: (day: string, id: string) => void;
   setWater: (day: string, n: number) => void;
   setNote: (day: string, text: string) => void;
+  setIncident: (day: string, text: string) => void;
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
+  /** Ends the round early; records move to history. */
+  stopRound: () => Promise<void>;
+  chooseRepeat: (months: number) => Promise<void>;
   setBody: (day: string, log: BodyLog) => void;
   setFastStart: (fastId: string, startMs: number | null) => Promise<void>;
   stopFast: (id: string) => Promise<void>;
@@ -49,6 +56,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const update = useCallback((fn: (s: Persisted) => Persisted) => {
     const next = fn(stateRef.current);
+    setPauses(next.pauses);
     stateRef.current = next;
     setState(next);
     saveState(next)
@@ -98,6 +106,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState(fresh);
       await syncInbox();
       if (!fresh.settings) return;
+      // A finished round with a repeat cycle moves on to the next round (records go to history).
+      if (shouldRollover(fresh, new Date())) {
+        update((p) => endRound(p, 'completed', new Date()));
+        await reschedule(stateRef.current);
+        return;
+      }
       const stale = fresh.lastScheduledOn !== dateKey(new Date());
       if (stale || (await scheduledCount().catch(() => 0)) === 0) reschedule(fresh);
     };
@@ -141,6 +155,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       setWater: (day, n) => update((s) => ({ ...s, water: { ...s.water, [day]: Math.max(0, n) } })),
       setNote: (day, text) => update((s) => ({ ...s, notes: { ...s.notes, [day]: text } })),
+      setIncident: (day, text) => update((s) => ({ ...s, incidents: { ...s.incidents, [day]: text } })),
+      pause: async () => {
+        update((s) => pauseRound(s, new Date()));
+        await reschedule(stateRef.current); // paused → every alarm is cancelled
+      },
+      resume: async () => {
+        update((s) => resumeRound(s, new Date()));
+        await reschedule(stateRef.current);
+      },
+      stopRound: async () => {
+        update((s) => endRound({ ...s, repeatMonths: 0 }, 'stopped', new Date()));
+        await cancelAll().catch(() => {});
+        await saveOutbox([]);
+      },
+      chooseRepeat: async (months) => {
+        const now = new Date();
+        // No rollover here: on the completion screen the finished round must stay visible.
+        // The next app open rolls it over; the next round's D-3 alarm is scheduled right now.
+        update((s) => setRepeat(s, months, now));
+        await reschedule(stateRef.current);
+      },
       setBody: (day, log) => update((s) => ({ ...s, body: { ...s.body, [day]: { ...s.body[day], ...log } } })),
       setFastStart: async (fastId, startMs) => {
         update((s) => {

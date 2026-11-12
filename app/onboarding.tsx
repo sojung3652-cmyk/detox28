@@ -21,10 +21,13 @@ const ROWS: { key: TimeKey; label: string }[] = [
 
 export default function Onboarding() {
   const { c } = useTheme();
-  const { saveSettings } = useApp();
+  const { saveSettings, lastSettings } = useApp();
   const [step, setStep] = useState(0);
   const [start, setStart] = useState<string | null>(null);
-  const [times, setTimes] = useState<Record<TimeKey, string>>({ ...DEFAULT_MEAL_TIMES, fast: DEFAULT_FAST_START });
+  const [times, setTimes] = useState<Record<TimeKey, string>>(() =>
+    // Starting again after a stop: reuse last round's times.
+    lastSettings ? { ...lastSettings.meals, fast: lastSettings.fastStart } : { ...DEFAULT_MEAL_TIMES, fast: DEFAULT_FAST_START },
+  );
   const [notif, setNotif] = useState<boolean | null>(null);
   const [exact, setExact] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);

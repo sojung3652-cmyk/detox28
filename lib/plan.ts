@@ -46,15 +46,67 @@ export function formatTime(d: Date) {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** 1-based program day for a date. Can be <1 (before start) or >28 (finished). */
-export function programDay(startKey: string, date: Date) {
-  const diff = startOfDay(date).getTime() - parseDateKey(startKey).getTime();
-  // Math.round absorbs the ±1h of a DST transition.
-  return Math.round(diff / DAY_MS) + 1;
+/** A pause covers calendar dates [from, to). `to` is missing while the pause is still going on. */
+export type Pause = { from: string; to?: string };
+
+// Pauses live in a module-level registry instead of being passed through every call:
+// programDay/dateOfDay are used in ~40 places (UI, scheduler, widget, background handlers),
+// and a pause must shift ALL of them the same way. The store sets this on every state change,
+// and normalize() sets it on every load, so code outside React sees the same pauses.
+let PAUSES: Pause[] = [];
+export function setPauses(p: Pause[] | undefined) {
+  PAUSES = (p ?? []).slice().sort((a, b) => a.from.localeCompare(b.from));
+}
+export function getPauses() {
+  return PAUSES;
 }
 
+/** Calendar-day difference b - a (DST-safe). */
+function daysBetween(a: Date, b: Date) {
+  // Math.round absorbs the ±1h of a DST transition.
+  return Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / DAY_MS);
+}
+
+/** End (exclusive) of a pause; an ongoing pause covers through today. */
+function pauseEnd(p: Pause) {
+  return p.to ? parseDateKey(p.to) : addDays(startOfDay(new Date()), 1);
+}
+
+/** The open pause, if the program is paused right now. */
+export function activePause() {
+  return PAUSES.find((p) => !p.to);
+}
+
+/** True for calendar dates the program was (or is) paused on. */
+export function isPausedDate(date: Date) {
+  const t = startOfDay(date).getTime();
+  return PAUSES.some((p) => t >= parseDateKey(p.from).getTime() && t < pauseEnd(p).getTime());
+}
+
+/**
+ * 1-based program day for a date. Can be <1 (before start) or >28 (finished).
+ * Paused dates don't count: a paused date reports the day that resumes after it.
+ */
+export function programDay(startKey: string, date: Date) {
+  const start = parseDateKey(startKey);
+  let skip = 0;
+  for (const p of PAUSES) {
+    const from = parseDateKey(p.from);
+    const end = pauseEnd(p);
+    if (startOfDay(date) >= end) skip += Math.max(0, daysBetween(from, end));
+    else if (startOfDay(date) >= from) return daysBetween(start, from) + 1 - skip;
+  }
+  return daysBetween(start, date) + 1 - skip;
+}
+
+/** Calendar date of a program day, skipping paused dates. */
 export function dateOfDay(startKey: string, day: number) {
-  return addDays(parseDateKey(startKey), day - 1);
+  let d = addDays(parseDateKey(startKey), day - 1);
+  for (const p of PAUSES) {
+    const from = parseDateKey(p.from);
+    if (d >= from) d = addDays(d, Math.max(0, daysBetween(from, pauseEnd(p))));
+  }
+  return d;
 }
 
 export function weekOfDay(day: number) {

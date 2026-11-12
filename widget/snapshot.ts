@@ -25,6 +25,7 @@ export function widgetSnapshot(s: Persisted, now: Date): WidgetSnapshot {
   const prog = routineProgress(st.startDate, s.checks, dateKey(now));
   total = prog.total;
   const done = prog.done;
+  if (s.pauses?.some((p) => !p.to)) return { title: `일시정지 · ${day}일차`, fastLine: '쉬어가는 중이에요', fastSub: '앱에서 다시 시작해요', fasting: false, done, total };
   if (day < 1) return { title: `시작까지 D-${1 - day}`, fastLine: '곧 시작해요', fastSub: '', fasting: false, done: 0, total };
   if (day > PROGRAM_DAYS) return { title: '28일 완주', fastLine: '정말 수고했어요', fastSub: '', fasting: false, done, total };
 

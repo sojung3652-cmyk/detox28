@@ -4,7 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
 import { Button, Card, CardHeader, Divider, Notice, Pill, T } from '../../components/ui';
-import { SAFETY_NOTICE } from '../../data/program';
+import { PROGRAM_DAYS, SAFETY_NOTICE } from '../../data/program';
 import { exportBackup, importBackup } from '../../lib/backup';
 import {
   hasExactAlarmPermission,
@@ -17,6 +17,8 @@ import {
 } from '../../lib/notifications';
 import { pickDate, pickTime, timeKo } from '../../lib/pickers';
 import { formatDateKo, parseDateKey, programDay } from '../../lib/plan';
+import { isPaused, repeatLabel, upcomingRoundStart } from '../../lib/round';
+import { RepeatPicker } from '../../components/RepeatPicker';
 import { SHOW_DEBUG, Settings, useApp, useNow } from '../../lib/store';
 import { CheckResult, applyNow, checkAndFetch, versionInfo } from '../../lib/updates';
 import { ThemePref, spacing, useTheme } from '../../theme';
@@ -73,6 +75,8 @@ export default function SettingsScreen() {
         <Card style={s.list}>
           <Row label="시작 날짜 (1일차)" value={formatDateKo(parseDateKey(st.startDate))} onPress={changeStart} />
         </Card>
+
+        <DetoxCard />
 
         <View style={{ gap: spacing.sm }}>
           <T size="small" tone="sub" style={s.section}>시간</T>
@@ -145,6 +149,55 @@ export default function SettingsScreen() {
         <VersionCard />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/** Pause / resume / stop the current round, and the repeat cycle. */
+function DetoxCard() {
+  const app = useApp();
+  const now = useNow();
+  const st = app.settings!;
+  const day = programDay(st.startDate, now);
+  const paused = isPaused(app);
+  const running = day >= 1 && day <= PROGRAM_DAYS;
+  const next = upcomingRoundStart(app, now);
+
+  const pause = () =>
+    Alert.alert('디톡스를 일시정지할까요?', `알람이 모두 멈추고 일차도 ${day}일차에서 멈춰요. 다시 시작하면 ${day}일차부터 이어서 해요.`, [
+      { text: '취소', style: 'cancel' },
+      { text: '일시정지', onPress: () => app.pause() },
+    ]);
+  const stop = () =>
+    Alert.alert('디톡스를 중단할까요?', '알람이 모두 꺼져요. 지금까지의 기록은 기록 탭의 "지난 디톡스"에 남아요.', [
+      { text: '취소', style: 'cancel' },
+      { text: '중단하기', style: 'destructive', onPress: () => app.stopRound().then(() => router.replace('/repeat')) },
+    ]);
+
+  return (
+    <View style={{ gap: spacing.sm }}>
+      <T size="small" tone="sub" style={s.section}>디톡스</T>
+      <Card style={{ gap: spacing.md }}>
+        {running || paused ? (
+          <>
+            <T size="small" tone="sub">{paused ? `일시정지 중 · ${day}일차에서 멈춰 있어요` : `지금 ${day}일차 진행 중`}</T>
+            <View style={s.pills}>
+              {paused ? (
+                <Button icon="play" label="다시 시작" onPress={() => app.resume()} />
+              ) : (
+                <Button kind="outline" icon="pause" label="일시정지" onPress={pause} />
+              )}
+              <Button kind="outline" icon="stop" label="중단하기" onPress={stop} />
+            </View>
+            <Divider />
+          </>
+        ) : null}
+        <CardHeader title="반복 주기" icon="repeat" right={<T size="small" tone="sub">{repeatLabel(app.repeatMonths)}</T>} />
+        <RepeatPicker value={app.repeatMonths} onSelect={(m) => app.chooseRepeat(m)} />
+        <T size="caption" tone="faint">
+          {next ? `다음 디톡스는 ${formatDateKo(next)}에 시작해요. 3일 전에 알려 드려요.` : '반복을 고르면 4주가 끝난 뒤 다음 디톡스가 자동으로 잡혀요.'}
+        </T>
+      </Card>
+    </View>
   );
 }
 

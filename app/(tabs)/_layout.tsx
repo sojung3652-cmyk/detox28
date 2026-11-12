@@ -11,12 +11,13 @@ const tab = (title: string, icon: IconName) => ({
 });
 
 export default function TabsLayout() {
-  const { loaded, settings } = useApp();
+  const { loaded, settings, history, repeatAsked } = useApp();
   const { c } = useTheme();
   // Every tab assumes settings exist. Guard here so a deep link before storage loads,
   // or a reset while a tab is mounted, can't render a tab with null settings.
   if (!loaded) return <View style={{ flex: 1, backgroundColor: c.bg }} />;
-  if (!settings) return <Redirect href="/onboarding" />;
+  // Just stopped a round: ask about repeating before anything else.
+  if (!settings) return <Redirect href={history.length && !repeatAsked ? '/repeat' : '/onboarding'} />;
   return (
     <Tabs
       screenOptions={{

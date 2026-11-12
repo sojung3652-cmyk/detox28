@@ -22,12 +22,14 @@ import {
   formatDateKo,
   formatTime,
   nextFast,
+  parseDateKey,
   programDay,
   sameDay,
   seasonTip,
   seededPick,
   weekPlan,
 } from '../../lib/plan';
+import { isPaused } from '../../lib/round';
 import { useApp, useNow } from '../../lib/store';
 import { MAX_FONT_SCALE, fonts, radius, spacing, textScale, type, useTheme } from '../../theme';
 
@@ -40,9 +42,35 @@ export default function Today() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
-        {day < 1 ? <BeforeStart daysLeft={1 - day} /> : day > PROGRAM_DAYS ? <Finished /> : <InProgram day={day} now={now} />}
+        {isPaused(app) ? (
+          <Paused day={day} />
+        ) : day < 1 ? (
+          <BeforeStart daysLeft={1 - day} />
+        ) : day > PROGRAM_DAYS ? (
+          <Finished />
+        ) : (
+          <InProgram day={day} now={now} />
+        )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function Paused({ day }: { day: number }) {
+  const app = useApp();
+  const since = app.pauses.find((p) => !p.to)!.from;
+  return (
+    <>
+      <View>
+        <T tone="sub">일시정지 중</T>
+        <T size="display" medium>{day}일차</T>
+      </View>
+      <Card style={{ gap: spacing.md }}>
+        <T>{formatDateKo(parseDateKey(since))}부터 쉬고 있어요. 알람도 모두 멈춰 있어요.</T>
+        <T size="small" tone="sub">다시 시작하면 {day}일차부터 이어서 해요.</T>
+        <Button icon="play" label="다시 시작" onPress={() => app.resume()} />
+      </Card>
+    </>
   );
 }
 
@@ -139,6 +167,7 @@ function InProgram({ day, now }: { day: number; now: Date }) {
       </View>
 
       <MemoCard dk={dk} />
+      <MemoCard dk={dk} incident />
 
       <View style={s.season}>
         <Icon name="leaf" size={16} />
@@ -331,15 +360,18 @@ function NextUpCard({ day, now, inputs }: { day: number; now: Date; inputs: Fast
   );
 }
 
-function MemoCard({ dk }: { dk: string }) {
+/** 오늘 메모, or (incident) 특이사항: off-plan food, a skipped fast, anything out of the routine. */
+function MemoCard({ dk, incident }: { dk: string; incident?: boolean }) {
   const { c } = useTheme();
   const app = useApp();
-  const [text, setText] = useState(app.notes[dk] ?? '');
+  const store = incident ? app.incidents : app.notes;
+  const save = incident ? app.setIncident : app.setNote;
+  const [text, setText] = useState(store[dk] ?? '');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveRef = useRef(app.setNote);
-  saveRef.current = app.setNote;
+  const saveRef = useRef(save);
+  saveRef.current = save;
 
-  useEffect(() => setText(app.notes[dk] ?? ''), [dk]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setText(store[dk] ?? ''), [dk]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onChange = (v: string) => {
     setText(v);
@@ -349,12 +381,12 @@ function MemoCard({ dk }: { dk: string }) {
 
   return (
     <Card style={{ gap: spacing.md }}>
-      <CardHeader title="오늘 메모" icon="note" />
+      <CardHeader title={incident ? '특이사항' : '오늘 메모'} icon={incident ? 'pencil' : 'note'} />
       <TextInput
         value={text}
         onChangeText={onChange}
-        onBlur={() => app.setNote(dk, text)}
-        placeholder="오늘 몸 상태나 기억하고 싶은 걸 적어요"
+        onBlur={() => save(dk, text)}
+        placeholder={incident ? '먹으면 안 되는 걸 먹었거나, 단식을 못 했거나, 루틴에서 벗어난 일을 적어요' : '오늘 몸 상태나 기억하고 싶은 걸 적어요'}
         placeholderTextColor={c.faint}
         multiline
         maxFontSizeMultiplier={MAX_FONT_SCALE}

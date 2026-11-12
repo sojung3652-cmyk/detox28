@@ -8,6 +8,8 @@ import { captureRef } from 'react-native-view-shot';
 import { Icon } from '../components/Icon';
 import { Button, T } from '../components/ui';
 import { dateOfDay, formatDateKo } from '../lib/plan';
+import { upcomingRoundStart } from '../lib/round';
+import { RepeatPicker } from '../components/RepeatPicker';
 import { dayKeys, fastStats, fmtWeight, ratioOn, streaks, toUnit, weightSeries } from '../lib/stats';
 import { useApp, useNow } from '../lib/store';
 import { radius, spacing, useTheme } from '../theme';
@@ -27,6 +29,7 @@ export default function Complete() {
   const fullDays = keys.filter((k) => ratioOn(app, k) >= 1).length;
   const w = weightSeries(app);
   const unit = app.weightUnit;
+  const next = upcomingRoundStart(app, now);
   const diff = w.length >= 2 ? toUnit(w[w.length - 1].lb, unit) - toUnit(w[0].lb, unit) : null;
 
   const save = async () => {
@@ -75,6 +78,16 @@ export default function Complete() {
           </View>
         </View>
 
+        <View style={[s.repeat, { backgroundColor: c.card }]}>
+          <T medium>다음 디톡스도 정해진 주기마다 반복할까요?</T>
+          <RepeatPicker value={app.repeatAsked ? app.repeatMonths : null} onSelect={(m) => app.chooseRepeat(m)} />
+          {app.repeatAsked ? (
+            <T size="small" tone="sub">
+              {next ? `다음 디톡스는 ${formatDateKo(next)}에 시작해요. 3일 전에 알려 드릴게요.` : '반복하지 않아요. 설정에서 언제든 바꿀 수 있어요.'}
+            </T>
+          ) : null}
+        </View>
+
         {Platform.OS !== 'web' ? <Button icon="image" label={saving ? '저장하는 중…' : '이미지로 저장'} disabled={saving} onPress={save} /> : null}
       </ScrollView>
     </SafeAreaView>
@@ -97,5 +110,6 @@ const s = StyleSheet.create({
   back: { width: 40, height: 40, justifyContent: 'center' },
   summary: { borderRadius: radius.card, padding: spacing.xl, gap: spacing.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.lg, rowGap: spacing.lg, marginTop: spacing.sm },
+  repeat: { borderRadius: radius.card, padding: spacing.xl, gap: spacing.md },
   stat: { flexBasis: '50%', flexGrow: 1, gap: 2, paddingRight: spacing.md },
 });

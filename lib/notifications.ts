@@ -63,7 +63,8 @@ export async function requestExactAlarmPermission() {
 
 /** Inputs for the scheduler from saved state. */
 export function scheduleInputs(st: Persisted): ScheduleInputs | null {
-  if (!st.settings) return null;
+  // Paused: no alarms at all until he resumes (and no "missed" letters while paused).
+  if (!st.settings || st.pauses?.some((p) => !p.to)) return null;
   return {
     startDate: st.settings.startDate,
     fastStart: st.settings.fastStart,
@@ -72,6 +73,7 @@ export function scheduleInputs(st: Persisted): ScheduleInputs | null {
     stopped: st.stoppedFasts,
     checks: st.checks,
     lastKeys: lastKeysFrom(st.inbox),
+    repeatMonths: st.repeatMonths,
   };
 }
 

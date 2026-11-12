@@ -77,6 +77,9 @@ export const MESSAGES = {
   streak21: [
     '연속 21일이라니 정말 놀라워요! 저도 더 열심히 해야겠습니다. 오늘도 즐거운 하루 되세요!',
   ],
+  dMinus3: [
+    '즐거운 디톡스까지 D-3! 너무 긴장하지 말아요. 함께 다시 달려봅시다 화이팅!',
+  ],
   noCheckToday: [
     '혹시 디톡스를 잊으셨나요? 오늘 베이비슈를 드셨더라도 용서해 드릴테니 다시 오세요, 웰컴!',
     '혹시 디톡스를 잊으셨나요? 오늘 엄마손파이를 드셨더라도 모른 척해 드릴테니 다시 오세요, 웰컴!',
@@ -104,6 +107,7 @@ export const TITLES: Record<MessageKind, string> = {
   fastEnd: '24시간 단식 끝',
   fastTomorrow: '내일은 단식하는 날',
   noCheckToday: '오늘의 디톡스',
+  dMinus3: '디톡스 D-3',
   day1: SPECIAL_NOTICE.title,
   week2Start: SPECIAL_NOTICE.title,
   week3Start: SPECIAL_NOTICE.title,
@@ -126,6 +130,7 @@ export const LABELS: Record<MessageKind, string> = {
   fastEnd: '단식 끝',
   fastTomorrow: '내일 단식 예고',
   noCheckToday: '오늘의 디톡스',
+  dMinus3: '디톡스 D-3',
   day1: '1일차 편지',
   week2Start: '2주차 시작 편지',
   week3Start: '3주차 시작 편지',

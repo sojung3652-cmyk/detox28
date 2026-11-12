@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CircleStop,
   Clock,
   Download,
   GlassWater,
@@ -16,9 +17,11 @@ import {
   Minus,
   Moon,
   NotebookPen,
+  Pause,
   Pencil,
   Play,
   Plus,
+  Repeat,
   Scale,
   Settings,
   ShoppingCart,
@@ -67,6 +70,9 @@ const MAP = {
   target: Target,
   image: ImageDown,
   mail: Mail,
+  pause: Pause,
+  stop: CircleStop,
+  repeat: Repeat,
 } as const;
 
 export type IconName = keyof typeof MAP;

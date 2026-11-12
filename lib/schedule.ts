@@ -1,7 +1,8 @@
 // Builds the full list of local alarms for the program (pure, no native calls).
 import { MESSAGES, MessageKind, SPECIAL, SPECIAL_NOTICE, TITLES } from '../data/notifications';
 import { PROGRAM_DAYS, WATER_ALARM_TIMES } from '../data/program';
-import { FastInputs, MealTimes, activeFasts, addDays, atTime, dateKey, dateOfDay, dinnerTypeOf, fastAt, programDay, routineProgress } from './plan';
+import { FastInputs, MealTimes, activeFasts, addDays, atTime, dateKey, dateOfDay, dinnerTypeOf, fastAt, parseDateKey, programDay, routineProgress } from './plan';
+import { nextRoundStart } from './round';
 
 export const NO_CHECK_TIME = '21:00';
 export const FAST_EVE_TIME = '21:00';
@@ -32,6 +33,8 @@ export type ScheduleInputs = FastInputs & {
   checks: Record<string, string[]>;
   /** Last message key sent per kind (from the inbox), so the first new pick avoids repeating it. */
   lastKeys?: Partial<Record<MessageKind, string>>;
+  /** Repeat cycle in months (0/undefined = none): the next round's D-3 alarm is scheduled too. */
+  repeatMonths?: number;
 };
 
 type Draft = Omit<AlarmSpec, 'key' | 'text' | 'title' | 'body' | 'special'> & { vars?: Record<string, string> };
@@ -52,10 +55,10 @@ function fill(s: string, vars: Record<string, string> = {}) {
 const good = (inp: { startDate: string; checks: Record<string, string[]> }, d: Date) =>
   routineProgress(inp.startDate, inp.checks, dateKey(d)).ratio >= STREAK_THRESHOLD;
 
-/** Length of the run of ≥80% days ending on (and including) `end`, within the program. */
+/** Length of the run of ≥80% days ending on (and including) `end`, within the program. Steps by program day, so paused dates are skipped. */
 function runEndingOn(inp: ScheduleInputs, end: Date) {
   let n = 0;
-  for (let d = end; programDay(inp.startDate, d) >= 1 && good(inp, d); d = addDays(d, -1)) n++;
+  for (let day = programDay(inp.startDate, end); day >= 1 && good(inp, dateOfDay(inp.startDate, day)); day--) n++;
   return n;
 }
 
@@ -70,14 +73,15 @@ export function streakDrafts(inp: ScheduleInputs, now: Date): Draft[] {
   const consider = (achievedOn: Date) => {
     const run = runEndingOn(inp, achievedOn);
     if (!(STREAK_MILESTONES as readonly number[]).includes(run)) return;
-    const sendDay = addDays(achievedOn, 1);
-    const pd = programDay(inp.startDate, sendDay);
+    const pd = programDay(inp.startDate, achievedOn) + 1;
+    const sendDay = dateOfDay(inp.startDate, pd);
     if (pd < 1 || pd > PROGRAM_DAYS) return;
     const at = new Date(atTime(sendDay, inp.meals.breakfast).getTime() + LETTER_DELAY_MS);
     out.push({ id: `streak-${run}`, date: at, kind: `streak${run}` as MessageKind, day: dateKey(sendDay) });
   };
   if (good(inp, today)) consider(today);
-  consider(addDays(today, -1));
+  const td = programDay(inp.startDate, today);
+  if (td > 1) consider(dateOfDay(inp.startDate, td - 1));
   return out.filter((d) => d.date > now);
 }
 
@@ -152,8 +156,23 @@ export function buildAlarms(inp: ScheduleInputs, now: Date, rand: () => number =
   }
 
   drafts.push(...streakDrafts(inp, now));
+  drafts.push(...dMinus3Drafts(inp, now));
 
   return assignTexts(drafts.filter((d) => d.date > now), inp.lastKeys, rand);
+}
+
+export const D_MINUS = 3;
+
+/** "D-3" alarm at breakfast time three days before this round starts, and before the next round when a repeat cycle is set. */
+export function dMinus3Drafts(inp: ScheduleInputs, now: Date): Draft[] {
+  const starts = [parseDateKey(inp.startDate)];
+  if (inp.repeatMonths && inp.repeatMonths > 0) {
+    starts.push(nextRoundStart(inp.startDate, inp.repeatMonths, dateOfDay(inp.startDate, PROGRAM_DAYS), now));
+  }
+  return starts.map((st) => {
+    const eve = addDays(st, -D_MINUS);
+    return { id: `dminus3-${dateKey(st)}`, date: atTime(eve, inp.meals.breakfast), kind: 'dMinus3' as MessageKind, day: dateKey(eve) };
+  });
 }
 
 /**

@@ -8,7 +8,8 @@ import { Icon } from '../../components/Icon';
 import { InboxCard } from '../../components/InboxCard';
 import { Card, CardHeader, Divider, Pill, T, tapFeedback } from '../../components/ui';
 import { PROGRAM_DAYS } from '../../data/program';
-import { dateKey, dateOfDay, formatDateKo, programDay, routineProgress, weekOfDay } from '../../lib/plan';
+import { dateKey, dateOfDay, formatDateKo, parseDateKey, programDay, routineProgress, weekOfDay } from '../../lib/plan';
+import { roundSummary } from '../../lib/round';
 import { STREAK_MILESTONES, dayKeys, fastStats, fmtWeight, fromUnit, ratioOn, streaks, toUnit, weightSeries } from '../../lib/stats';
 import { useApp, useNow } from '../../lib/store';
 import { MAX_FONT_SCALE, fonts, radius, spacing, textScale, type, useTheme } from '../../theme';
@@ -61,7 +62,7 @@ export default function Record() {
                       future={d > today}
                       selected={d === sel}
                       fasted={fasts.doneDays.has(d)}
-                      memo={!!app.notes[k]?.trim()}
+                      memo={!!app.notes[k]?.trim() || !!app.incidents[k]?.trim()}
                       onPress={() => d <= today && setSel(d)}
                     />
                   );
@@ -72,7 +73,7 @@ export default function Record() {
           <View style={s.legend}>
             <Legend label="루틴 체크 비율만큼 채워져요" swatch={<View style={[s.sw, { backgroundColor: c.accent }]} />} />
             <Legend label="단식" swatch={<View style={[s.fastMark, { backgroundColor: c.accent, position: 'relative', top: 0, right: 0 }]} />} />
-            <Legend label="메모" swatch={<View style={[s.dot, { backgroundColor: c.sub, position: 'relative', bottom: 0 }]} />} />
+            <Legend label="메모·특이사항" swatch={<View style={[s.dot, { backgroundColor: c.sub, position: 'relative', bottom: 0 }]} />} />
           </View>
         </Card>
 
@@ -82,7 +83,11 @@ export default function Record() {
 
         <WeightCard />
 
+        <MemoList incident />
+
         <MemoList />
+
+        <HistoryCard />
       </ScrollView>
     </SafeAreaView>
   );
@@ -260,6 +265,16 @@ function DayDetail({ dk, day }: { dk: string; day: number }) {
         </T>
       </View>
 
+      {app.incidents[dk]?.trim() ? (
+        <>
+          <Divider />
+          <View style={{ gap: spacing.xs }}>
+            <T size="small" tone="sub">특이사항</T>
+            <T>{app.incidents[dk]}</T>
+          </View>
+        </>
+      ) : null}
+
       {app.notes[dk]?.trim() ? (
         <>
           <Divider />
@@ -321,16 +336,16 @@ function WeightCard() {
   );
 }
 
-function MemoList() {
+function MemoList({ incident }: { incident?: boolean }) {
   const app = useApp();
   const st = app.settings!;
-  const items = Object.entries(app.notes)
+  const items = Object.entries(incident ? app.incidents : app.notes)
     .filter(([, v]) => v.trim())
     .sort(([a], [b]) => (a < b ? 1 : -1));
   if (!items.length) return null;
   return (
     <Card>
-      <CardHeader title="메모 모아보기" icon="note" />
+      <CardHeader title={incident ? '특이사항 모아보기' : '메모 모아보기'} icon={incident ? 'pencil' : 'note'} />
       {items.map(([k, v], i) => {
         const [y, m, d] = k.split('-').map(Number);
         const date = new Date(y, m - 1, d);
@@ -339,6 +354,30 @@ function MemoList() {
             {i > 0 ? <Divider /> : null}
             <T size="caption" tone="sub">{programDay(st.startDate, date)}일차 · {formatDateKo(date)}</T>
             <T>{v}</T>
+          </View>
+        );
+      })}
+    </Card>
+  );
+}
+
+/** Past rounds (completed or stopped), newest first. Their full records stay in storage and backups. */
+function HistoryCard() {
+  const app = useApp();
+  if (!app.history.length) return null;
+  const fmt = (k: string) => formatDateKo(parseDateKey(k));
+  return (
+    <Card>
+      <CardHeader title="지난 디톡스" icon="repeat" />
+      {[...app.history].reverse().map((r, i) => {
+        const sum = roundSummary(r);
+        return (
+          <View key={r.startDate + i} style={{ gap: spacing.xs }}>
+            {i > 0 ? <Divider /> : null}
+            <T size="caption" tone="sub">{fmt(r.startDate)} ~ {fmt(r.endDate)}</T>
+            <T>
+              {r.reason === 'completed' ? '완주' : '중단'} · 체크한 날 {sum.checkedDays}일{sum.incidents ? ` · 특이사항 ${sum.incidents}건` : ''}
+            </T>
           </View>
         );
       })}
