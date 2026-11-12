@@ -123,8 +123,6 @@ export function buildAlarms(inp: ScheduleInputs, now: Date, rand: () => number =
     const letterAt = new Date(breakfastAt.getTime() + LETTER_DELAY_MS);
 
     // Special-day letters: sent even on a fasting morning.
-    // Start letter right as the detox begins (breakfast time on day 1); the day-1 letter follows a minute later.
-    if (day === 1) drafts.push({ id: 'letter-start', date: breakfastAt, kind: 'start', day: dk });
     if (day === 1) drafts.push({ id: 'letter-day1', date: letterAt, kind: 'day1', day: dk });
     if (day === 8) drafts.push({ id: 'letter-week2', date: letterAt, kind: 'week2Start', day: dk });
     if (day === 15) drafts.push({ id: 'letter-week3', date: letterAt, kind: 'week3Start', day: dk });
@@ -192,7 +190,6 @@ export function dueSpecialLetters(inp: ScheduleInputs, now: Date): AlarmSpec[] {
     [22, 'week4Start', 'letter-week4'],
     [PROGRAM_DAYS, 'complete', 'letter-complete'],
   ];
-  drafts.push({ id: 'letter-start', date: atTime(dateOfDay(inp.startDate, 1), inp.meals.breakfast), kind: 'start', day: dateKey(dateOfDay(inp.startDate, 1)) });
   for (const [day, kind, id] of fixed) drafts.push({ id, date: at(day), kind, day: dateKey(dateOfDay(inp.startDate, day)) });
   // Streak milestones reached on day D → letter on D+1.
   for (let day = 1; day < PROGRAM_DAYS; day++) {

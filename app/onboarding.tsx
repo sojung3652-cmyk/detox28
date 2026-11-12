@@ -21,7 +21,7 @@ const ROWS: { key: TimeKey; label: string }[] = [
 
 export default function Onboarding() {
   const { c } = useTheme();
-  const { saveSettings, lastSettings } = useApp();
+  const { saveSettings, lastSettings, sendStartLetter } = useApp();
   const [step, setStep] = useState(0);
   const [start, setStart] = useState<string | null>(null);
   const [times, setTimes] = useState<Record<TimeKey, string>>(() =>
@@ -40,6 +40,7 @@ export default function Onboarding() {
       meals: { breakfast: times.breakfast, lunch: times.lunch, dinner: times.dinner },
       fastStart: times.fast,
     });
+    sendStartLetter();
     router.replace('/today');
   };
 

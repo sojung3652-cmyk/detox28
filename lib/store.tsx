@@ -7,6 +7,7 @@ import { cancelAlarm, cancelAll, rescheduleAll, scheduleInputs, scheduledCount, 
 import { InboxEntry, Letter, addMissing, letterRef, loadOutbox, moveDue, saveOutbox } from './letters';
 import { dueSpecialLetters } from './schedule';
 import { refreshWidget } from './widgetBridge';
+import { MESSAGES } from '../data/notifications';
 import { ParsedAction, applyAction } from './actions';
 import type { ThemePref } from '../theme';
 
@@ -30,6 +31,8 @@ type Ctx = Persisted & {
   /** Ends the round early; records move to history. */
   stopRound: () => Promise<void>;
   chooseRepeat: (months: number) => Promise<void>;
+  /** Puts the start letter straight into the inbox (pressing 시작하기 → it pops up on the main screen). */
+  sendStartLetter: () => void;
   setBody: (day: string, log: BodyLog) => void;
   setFastStart: (fastId: string, startMs: number | null) => Promise<void>;
   stopFast: (id: string) => Promise<void>;
@@ -182,6 +185,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // The next app open rolls it over; the next round's D-3 alarm is scheduled right now.
         update((s) => setRepeat(s, months, now));
         await reschedule(stateRef.current);
+      },
+      sendStartLetter: () => {
+        const at = Date.now();
+        const letter: Letter = { id: 'letter-start', at, kind: 'start', key: 'start.0', text: MESSAGES.start[0], special: true };
+        update((s) => ({ ...s, inbox: addMissing(s.inbox, [letter]).inbox }));
       },
       setBody: (day, log) => update((s) => ({ ...s, body: { ...s.body, [day]: { ...s.body[day], ...log } } })),
       setFastStart: async (fastId, startMs) => {
