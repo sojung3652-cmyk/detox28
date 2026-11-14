@@ -1,6 +1,6 @@
 import { AlertBell } from '../../components/AlertBell';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -46,6 +46,13 @@ export default function MenuScreen() {
   const [tab, setTab] = useState<MenuCategory>(autoTab);
   const [open, setOpen] = useState<string | null>(null);
 
+  // Opened from 오늘's "주차별 루틴 보기": this week, routine card unfolded.
+  const { routine: routineSignal } = useLocalSearchParams<{ routine?: string }>();
+  useEffect(() => {
+    if (routineSignal) setWeek(currentWeek);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routineSignal]);
+
   const selectWeek = (w: number) => {
     setWeek(w);
     setOpen(null);
@@ -80,7 +87,7 @@ export default function MenuScreen() {
               <Button kind="outline" icon="left" label="이번 주로 돌아가기" onPress={() => selectWeek(currentWeek)} />
             </View>
           ) : null}
-          <RoutineCard week={week} />
+          <RoutineCard week={week} openSignal={routineSignal} />
         </View>
 
         <View style={s.row}>
@@ -130,9 +137,12 @@ function WeekChip({ week, selected, current, onPress }: { week: number; selected
 }
 
 /** This week's daily routine; items new vs. last week get a "새로" tag, dropped ones are listed below. */
-function RoutineCard({ week }: { week: number }) {
+function RoutineCard({ week, openSignal }: { week: number; openSignal?: string }) {
   const { c } = useTheme();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!openSignal);
+  useEffect(() => {
+    if (openSignal) setOpen(true);
+  }, [openSignal]);
   const routine = WEEKS[week - 1].routine;
   const added = new Set(addedRoutineItems(week).map((r) => r.id));
   const removed = removedRoutineItems(week);

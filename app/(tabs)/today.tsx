@@ -224,6 +224,15 @@ function InProgram({ day, now }: { day: number; now: Date }) {
             <CheckRow key={item.id} label={item.label} detail={item.detail} checked={checked.includes(item.id)} onToggle={() => app.toggleCheck(dk, item.id)} />
           ))}
         </View>
+        <Pressable
+          accessibilityRole="button"
+          // The param changes on every press, so the menu tab unfolds the card again even when it is already mounted.
+          onPress={() => router.navigate({ pathname: '/menu', params: { routine: String(Date.now()) } })}
+          style={[s.weeklyLink, { borderTopColor: c.line }]}
+        >
+          <T size="small" medium style={{ flex: 1 }}>주차별 루틴 보기</T>
+          <Icon name="right" size={16} color={c.faint} />
+        </Pressable>
       </Card>
 
       <View style={s.twoCol}>
@@ -475,6 +484,7 @@ const s = StyleSheet.create({
   // 4 per row at any card width (two rows of 4 = goal of 8).
   cup: { flexBasis: '21%', flexGrow: 1, maxWidth: 64, height: 40, borderRadius: radius.inner - 2, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   allRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  weeklyLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, paddingTop: spacing.md },
   allBtn: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   memo: { minHeight: 88, borderRadius: radius.inner, padding: spacing.md, textAlignVertical: 'top' },
   notice: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
