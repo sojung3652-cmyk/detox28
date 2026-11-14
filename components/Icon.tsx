@@ -31,6 +31,7 @@ import {
   SunMoon,
   Target,
   Timer,
+  Trash2,
   Trophy,
   Upload,
   Utensils,
@@ -75,6 +76,7 @@ const MAP = {
   stop: CircleStop,
   repeat: Repeat,
   bell: Bell,
+  trash: Trash2,
 } as const;
 
 export type IconName = keyof typeof MAP;

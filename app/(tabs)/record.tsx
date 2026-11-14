@@ -1,7 +1,7 @@
 import { AlertBell } from '../../components/AlertBell';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
@@ -365,9 +365,24 @@ function MemoList({ incident }: { incident?: boolean }) {
 
 /** Past rounds (completed or stopped), newest first. Their full records stay in storage and backups. */
 function HistoryCard() {
+  const { c } = useTheme();
   const app = useApp();
   if (!app.history.length) return null;
+  // Past rounds can be years apart: show the year when it isn't this year.
   const fmt = (k: string) => formatDateKo(parseDateKey(k));
+  const range = (a: string, b: string) => `${a.slice(0, 4) !== String(new Date().getFullYear()) ? `${a.slice(0, 4)}년 ` : ''}${fmt(a)} ~ ${fmt(b)}`;
+  const confirmDelete = (startDate: string, endDate: string) => {
+    const msg = `${range(startDate, endDate)} 기록을 지울까요? 지운 기록은 되돌릴 수 없어요.`;
+    // RN Alert does nothing on web (preview only): use the browser confirm there.
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm?.(msg)) app.deleteRound(startDate, endDate);
+      return;
+    }
+    Alert.alert('지난 디톡스 삭제', msg, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => app.deleteRound(startDate, endDate) },
+    ]);
+  };
   return (
     <Card>
       <CardHeader title="지난 디톡스" icon="repeat" />
@@ -376,10 +391,23 @@ function HistoryCard() {
         return (
           <View key={r.startDate + i} style={{ gap: spacing.xs }}>
             {i > 0 ? <Divider /> : null}
-            <T size="caption" tone="sub">{fmt(r.startDate)} ~ {fmt(r.endDate)}</T>
-            <T>
-              {r.reason === 'completed' ? '완주' : '중단'} · 체크한 날 {sum.checkedDays}일{sum.incidents ? ` · 특이사항 ${sum.incidents}건` : ''}
-            </T>
+            <View style={s.histRow}>
+              <View style={{ flex: 1, gap: spacing.xs }}>
+                <T size="caption" tone="sub">{range(r.startDate, r.endDate)}</T>
+                <T>
+                  {r.reason === 'completed' ? '완주' : '중단'} · 체크한 날 {sum.checkedDays}일{sum.incidents ? ` · 특이사항 ${sum.incidents}건` : ''}
+                </T>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${fmt(r.startDate)} 디톡스 기록 삭제`}
+                onPress={() => confirmDelete(r.startDate, r.endDate)}
+                hitSlop={10}
+                style={s.histDel}
+              >
+                <Icon name="trash" size={18} color={c.faint} />
+              </Pressable>
+            </View>
           </View>
         );
       })}
@@ -390,6 +418,8 @@ function HistoryCard() {
 const s = StyleSheet.create({
   wrap: { padding: spacing.screen, gap: spacing.lg, paddingBottom: 48 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  histRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  histDel: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
   stat: { flexGrow: 1, gap: spacing.xs, padding: spacing.lg },

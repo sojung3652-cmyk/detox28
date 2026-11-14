@@ -31,6 +31,8 @@ type Ctx = Persisted & {
   /** Ends the round early; records move to history. */
   stopRound: () => Promise<void>;
   chooseRepeat: (months: number) => Promise<void>;
+  /** Deletes one past round (지난 디톡스) by its start and end dates. */
+  deleteRound: (startDate: string, endDate: string) => void;
   /** Puts the start letter straight into the inbox (pressing 시작하기 → it pops up on the main screen). */
   sendStartLetter: () => void;
   /** 알림함 opened: the bell's count goes back to 0. */
@@ -195,6 +197,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         update((s) => setRepeat(s, months, now));
         await reschedule(stateRef.current);
       },
+      deleteRound: (startDate, endDate) =>
+        update((s) => ({ ...s, history: s.history.filter((r) => !(r.startDate === startDate && r.endDate === endDate)) })),
       sendStartLetter: () => {
         const at = Date.now();
         const letter: Letter = { id: 'letter-start', at, kind: 'start', key: 'start.0', text: MESSAGES.start[0], special: true };
