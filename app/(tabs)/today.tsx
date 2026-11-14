@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 import { Ring } from '../../components/Ring';
 import { Badge, Button, Card, CardHeader, CheckRow, T, tapFeedback } from '../../components/ui';
 import { POST_FAST_NOTE, menusFor } from '../../data/menus';
-import { DINNER_LABEL, FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, SHOPPING, WATER_GOAL } from '../../data/program';
+import { FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, SHOPPING, WATER_GOAL } from '../../data/program';
 import { pickTime, timeKo } from '../../lib/pickers';
 import {
   Fast,
@@ -121,6 +121,24 @@ function Finished() {
   );
 }
 
+/** 오늘 저녁: low-carb or normal dinner (or no dinner because of a fast). */
+function DinnerRow({ day, now, inputs }: { day: number; now: Date; inputs: FastInputs }) {
+  const app = useApp();
+  const st = app.settings!;
+  const dinnerAt = atTime(now, st.meals.dinner);
+  const fasting = !!fastAt(activeFasts(inputs), dinnerAt);
+  const lowcarb = dinnerTypeOf(st.startDate, day) === 'lowcarb';
+  return (
+    <Card style={s.shopRow}>
+      <Icon name="menu" size={18} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <T size="small" tone="sub">오늘 저녁 · {timeKo(formatTime(dinnerAt))}</T>
+        <T medium>{fasting ? '단식하는 날이라 저녁은 쉬어요' : lowcarb ? '탄수화물 없는 식사' : '일반식'}</T>
+      </View>
+    </Card>
+  );
+}
+
 /** 오늘 탭의 장보기 바로가기: this week's list progress (+ his own list's open items). */
 function ShoppingRow({ week }: { week: number }) {
   const { c } = useTheme();
@@ -148,7 +166,6 @@ function InProgram({ day, now }: { day: number; now: Date }) {
   const app = useApp();
   const st = app.settings!;
   const plan = weekPlan(day);
-  const dinner = dinnerTypeOf(st.startDate, day);
   const dk = dateKey(now);
   const checked = app.checks[dk] ?? [];
   const prog = routineProgress(st.startDate, app.checks, dk); // this week's routine only
@@ -164,16 +181,14 @@ function InProgram({ day, now }: { day: number; now: Date }) {
           <T size="small" tone="sub">{plan.week}주차</T>
           <T size="h1" medium>{day}일차</T>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
-          <T size="caption" tone="faint">오늘 저녁</T>
-          <Badge label={DINNER_LABEL[dinner]} />
-        </View>
         <View style={s.bellTop}>
           <AlertBell />
         </View>
       </View>
 
       <GoalCard week={plan.week} />
+
+      <DinnerRow day={day} now={now} inputs={inputs} />
 
       <ShoppingRow week={plan.week} />
 
@@ -342,7 +357,7 @@ function FastCard({ day, now, inputs }: { day: number; now: Date; inputs: FastIn
   }
 
   const next = nextFast(fasts, now);
-  const meal = nextMeal(now, app.settings!.meals);
+  const meal = nextMeal(now, app.settings!.meals, app.settings!.skip);
   return (
     <Card style={{ gap: spacing.xl }}>
       <CardHeader title="오늘은 단식 없는 날" icon="timer" />
@@ -369,17 +384,17 @@ function TimeCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function nextMeal(now: Date, meals: { breakfast: string; lunch: string; dinner: string }) {
+function nextMeal(now: Date, meals: { breakfast: string; lunch: string; dinner: string }, skip?: 'breakfast' | 'lunch' | null) {
   const list = [
-    { label: '아침', t: meals.breakfast },
-    { label: '점심', t: meals.lunch },
-    { label: '저녁', t: meals.dinner },
-  ];
+    { key: 'breakfast', label: '아침', t: meals.breakfast },
+    { key: 'lunch', label: '점심', t: meals.lunch },
+    { key: 'dinner', label: '저녁', t: meals.dinner },
+  ].filter((m) => m.key !== skip); // 2 meals a day: the skipped meal never comes up
   for (const m of list) {
     const at = atTime(now, m.t);
     if (at > now) return { label: m.label, at };
   }
-  return { label: '내일 아침', at: atTime(addDays(now, 1), meals.breakfast) };
+  return { label: `내일 ${list[0].label}`, at: atTime(addDays(now, 1), list[0].t) };
 }
 
 function WaterCard({ dk }: { dk: string }) {

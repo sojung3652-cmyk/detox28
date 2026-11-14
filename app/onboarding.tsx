@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icon';
-import { Button, Card, Divider, Notice, T } from '../components/ui';
+import { Button, Card, Divider, Notice, Pill, T } from '../components/ui';
 import { DEFAULT_FAST_START, DEFAULT_MEAL_TIMES, SAFETY_NOTICE } from '../data/program';
 import { requestExactAlarmPermission, requestNotificationPermission } from '../lib/notifications';
 import { pickDate, pickTime, timeKo } from '../lib/pickers';
-import { formatDateKo, parseDateKey } from '../lib/plan';
+import { MEAL_PLANS, SkipMeal, formatDateKo, parseDateKey } from '../lib/plan';
 import { useApp } from '../lib/store';
 import { radius, spacing, useTheme } from '../theme';
 
@@ -28,6 +28,7 @@ export default function Onboarding() {
     // Starting again after a stop: reuse last round's times.
     lastSettings ? { ...lastSettings.meals, fast: lastSettings.fastStart } : { ...DEFAULT_MEAL_TIMES, fast: DEFAULT_FAST_START },
   );
+  const [skip, setSkip] = useState<SkipMeal | null>(lastSettings?.skip ?? null);
   const [notif, setNotif] = useState<boolean | null>(null);
   const [exact, setExact] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
@@ -39,6 +40,7 @@ export default function Onboarding() {
       startDate: start,
       meals: { breakfast: times.breakfast, lunch: times.lunch, dinner: times.dinner },
       fastStart: times.fast,
+      skip,
     });
     sendStartLetter();
     router.replace('/today');
@@ -84,19 +86,27 @@ export default function Onboarding() {
           <>
             <T size="h1" medium>시간을 알려주세요</T>
             <T tone="sub">이 시간에 맞춰 알람이 와요. 설정에서 언제든 바꿀 수 있어요.</T>
+            <T size="small" tone="sub">하루에 몇 끼 드세요?</T>
+            <View style={st.pills}>
+              {MEAL_PLANS.map((o) => (
+                <Pill key={o.label} label={o.label} selected={skip === o.skip} onPress={() => setSkip(o.skip)} />
+              ))}
+            </View>
             <Card style={{ gap: 0, paddingVertical: spacing.sm }}>
-              {ROWS.map((r, i) => (
+              {ROWS.filter((r) => r.key !== 'lunch' || skip !== 'lunch').map((r, i) => (
                 <View key={r.key}>
                   {i > 0 ? <Divider /> : null}
                   <Pressable onPress={() => pickTime(times[r.key], (v) => setTimes((p) => ({ ...p, [r.key]: v })))} style={st.timeRow}>
-                    <T style={{ flex: 1 }}>{r.label}</T>
+                    <T style={{ flex: 1 }}>{r.key === 'breakfast' && skip === 'breakfast' ? '아침 편지 시각' : r.label}</T>
                     <T medium>{timeKo(times[r.key])}</T>
                     <Icon name="right" size={18} color={c.faint} />
                   </Pressable>
                 </View>
               ))}
             </Card>
-            <T size="caption" tone="sub">단식은 단식하는 날 이 시간에 시작해 24시간 이어져요.</T>
+            <T size="caption" tone="sub">
+              단식은 단식하는 날 이 시간에 시작해 24시간 이어져요.{skip === 'breakfast' ? ' 아침을 안 드셔도 편지는 아침 편지 시각에 와요.' : ''}
+            </T>
             <Button label="다음" onPress={() => setStep(3)} />
             <Button label="이전" kind="quiet" onPress={() => setStep(1)} />
           </>
@@ -145,6 +155,7 @@ function PermRow({ title, desc, state, onPress }: { title: string; desc: string;
 }
 
 const st = StyleSheet.create({
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   wrap: { padding: spacing.screen, gap: spacing.xl, paddingBottom: 56 },
   dots: { flexDirection: 'row', gap: spacing.sm, justifyContent: 'center', marginVertical: spacing.sm },
   dot: { width: 24, height: 4, borderRadius: 2 },

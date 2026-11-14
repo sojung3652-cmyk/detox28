@@ -17,7 +17,7 @@ import {
   scheduledCount,
 } from '../../lib/notifications';
 import { pickDate, pickTime, timeKo } from '../../lib/pickers';
-import { formatDateKo, parseDateKey, programDay } from '../../lib/plan';
+import { MEAL_PLANS, formatDateKo, parseDateKey, programDay } from '../../lib/plan';
 import { isPaused, repeatLabel, upcomingRoundStart } from '../../lib/round';
 import { RepeatPicker } from '../../components/RepeatPicker';
 import { SHOW_DEBUG, Settings, useApp, useNow } from '../../lib/store';
@@ -84,11 +84,20 @@ export default function SettingsScreen() {
 
         <View style={{ gap: spacing.sm }}>
           <T size="small" tone="sub" style={s.section}>시간</T>
+          <Card style={{ gap: spacing.sm }}>
+            <T size="small" tone="sub">하루 식사</T>
+            <View style={s.pills}>
+              {MEAL_PLANS.map((o) => (
+                <Pill key={o.label} label={o.label} selected={(st.skip ?? null) === o.skip} onPress={() => save({ ...st, skip: o.skip })} />
+              ))}
+            </View>
+            <T size="caption" tone="faint">저녁은 탄수화물 규칙과 단식 시간에 맞춰져 있어서 빼지 않아요.</T>
+          </Card>
           <Card style={s.list}>
-            {MEALS.map((m) => (
+            {MEALS.filter((m) => m.key !== st.skip || m.key === 'breakfast').map((m) => (
               <View key={m.key}>
                 <Row
-                  label={m.label}
+                  label={m.key === 'breakfast' && st.skip === 'breakfast' ? '아침 편지 시각' : m.label}
                   value={timeKo(st.meals[m.key])}
                   onPress={() => pickTime(st.meals[m.key], (v) => save({ ...st, meals: { ...st.meals, [m.key]: v } }))}
                 />

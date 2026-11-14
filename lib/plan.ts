@@ -12,6 +12,14 @@ import {
 
 export type MealTimes = { breakfast: string; lunch: string; dinner: string };
 
+/** A meal he doesn't eat (2 meals a day). Dinner is always kept: the low-carb/normal rule and fasts hang on it. */
+export type SkipMeal = 'breakfast' | 'lunch';
+export const MEAL_PLANS: { skip: SkipMeal | null; label: string }[] = [
+  { skip: null, label: '3끼' },
+  { skip: 'breakfast', label: '2끼 · 아침 없이' },
+  { skip: 'lunch', label: '2끼 · 점심 없이' },
+];
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function pad(n: number) {

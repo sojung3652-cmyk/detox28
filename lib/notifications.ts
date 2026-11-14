@@ -74,6 +74,7 @@ export function scheduleInputs(st: Persisted): ScheduleInputs | null {
     checks: st.checks,
     lastKeys: lastKeysFrom(st.inbox),
     repeatMonths: st.repeatMonths,
+    skip: st.settings.skip ?? null,
   };
 }
 

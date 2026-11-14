@@ -35,6 +35,8 @@ export type ScheduleInputs = FastInputs & {
   lastKeys?: Partial<Record<MessageKind, string>>;
   /** Repeat cycle in months (0/undefined = none): the next round's D-3 alarm is scheduled too. */
   repeatMonths?: number;
+  /** Meal he skips (2 meals a day): no alarm for it. */
+  skip?: 'breakfast' | 'lunch' | null;
 };
 
 type Draft = Omit<AlarmSpec, 'key' | 'text' | 'title' | 'body' | 'special'> & { vars?: Record<string, string> };
@@ -129,9 +131,9 @@ export function buildAlarms(inp: ScheduleInputs, now: Date, rand: () => number =
     if (day === 22) drafts.push({ id: 'letter-week4', date: letterAt, kind: 'week4Start', day: dk });
     if (day === PROGRAM_DAYS) drafts.push({ id: 'letter-complete', date: letterAt, kind: 'complete', day: dk });
 
-    if (!fasting(breakfastAt)) drafts.push({ id: `breakfast-${day}`, date: breakfastAt, kind: 'breakfast', category: 'meal', meal: 'breakfast', day: dk });
+    if (inp.skip !== 'breakfast' && !fasting(breakfastAt)) drafts.push({ id: `breakfast-${day}`, date: breakfastAt, kind: 'breakfast', category: 'meal', meal: 'breakfast', day: dk });
     const lunchAt = atTime(date, inp.meals.lunch);
-    if (!fasting(lunchAt)) {
+    if (inp.skip !== 'lunch' && !fasting(lunchAt)) {
       // Week 1, day 4: rice at lunch starts today.
       drafts.push({ id: `lunch-${day}`, date: lunchAt, kind: day === 4 ? 'week1Day4Lunch' : 'lunch', category: 'meal', meal: 'lunch', day: dk });
     }

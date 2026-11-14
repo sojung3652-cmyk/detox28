@@ -5,12 +5,13 @@ import { isLetterKind } from '../data/notifications';
 import { DEFAULT_FAST_START, DEFAULT_MEAL_TIMES } from '../data/program';
 import type { ThemePref } from '../theme';
 import type { InboxEntry, Letter } from './letters';
-import { type MealTimes, type Pause, setPauses } from './plan';
+import { type MealTimes, type Pause, type SkipMeal, setPauses } from './plan';
 
 // Same key as v1 so existing records carry over; missing fields are filled from EMPTY.
 export const KEY = '@detox28/state/v1';
 
-export type Settings = { startDate: string; meals: MealTimes; fastStart: string };
+/** skip: the meal left out on a 2-meal day (none = 3 meals). Breakfast time stays the morning letter time. */
+export type Settings = { startDate: string; meals: MealTimes; fastStart: string; skip?: SkipMeal | null };
 export type BodyLog = { weightLb?: number; condition?: 1 | 2 | 3 | 4 | 5; note?: string };
 
 /** One finished (completed or stopped) detox round, kept for the record tab. */
@@ -101,6 +102,7 @@ export function normalize(raw: unknown): Persisted {
       startDate: p.settings.startDate,
       meals: { ...DEFAULT_MEAL_TIMES, ...p.settings.meals },
       fastStart: p.settings.fastStart ?? DEFAULT_FAST_START,
+      skip: p.settings.skip === 'breakfast' || p.settings.skip === 'lunch' ? p.settings.skip : null,
     };
   }
   return p;
