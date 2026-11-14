@@ -169,9 +169,14 @@ export function dMinus3Drafts(inp: ScheduleInputs, now: Date): Draft[] {
   if (inp.repeatMonths && inp.repeatMonths > 0) {
     starts.push(nextRoundStart(inp.startDate, inp.repeatMonths, dateOfDay(inp.startDate, PROGRAM_DAYS), now));
   }
-  return starts.map((st) => {
+  return starts.flatMap((st) => {
     const eve = addDays(st, -D_MINUS);
-    return { id: `dminus3-${dateKey(st)}`, date: atTime(eve, inp.meals.breakfast), kind: 'dMinus3' as MessageKind, day: dateKey(eve) };
+    const at = atTime(eve, inp.meals.breakfast);
+    return [
+      { id: `dminus3-${dateKey(st)}`, date: at, kind: 'dMinus3' as MessageKind, day: dateKey(eve) },
+      // The D-3 shopping letter follows the D-3 alarm a minute later.
+      { id: `letter-dminus3-${dateKey(st)}`, date: new Date(at.getTime() + LETTER_DELAY_MS), kind: 'dMinus3Letter' as MessageKind, day: dateKey(eve) },
+    ];
   });
 }
 
@@ -190,6 +195,12 @@ export function dueSpecialLetters(inp: ScheduleInputs, now: Date): AlarmSpec[] {
     [22, 'week4Start', 'letter-week4'],
     [PROGRAM_DAYS, 'complete', 'letter-complete'],
   ];
+  // D-3 shopping letter: only made up for while the round has not started yet (no "go shopping" after day 1).
+  const start = parseDateKey(inp.startDate);
+  if (now < start) {
+    const eve = addDays(start, -D_MINUS);
+    drafts.push({ id: `letter-dminus3-${inp.startDate}`, date: new Date(atTime(eve, inp.meals.breakfast).getTime() + LETTER_DELAY_MS), kind: 'dMinus3Letter', day: dateKey(eve) });
+  }
   for (const [day, kind, id] of fixed) drafts.push({ id, date: at(day), kind, day: dateKey(dateOfDay(inp.startDate, day)) });
   // Streak alarms are simple alarms now: never re-delivered as letters.
   return assignTexts(drafts.filter((d) => d.date <= now));

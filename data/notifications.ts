@@ -83,6 +83,9 @@ export const MESSAGES = {
   dMinus3: [
     '즐거운 디톡스까지 D-3! 너무 긴장하지 말아요. 함께 다시 달려봅시다 화이팅!',
   ],
+  dMinus3Letter: [
+    '28일 간의 디톡스 D-3! 장을 볼 시간이에요 식사량이 확 주는 주기인 만큼 끼니를 거르는 일이 없도록 꼼꼼하게 장을 봐 주세요. 즐거운 준비기간 되세요, 화이팅!',
+  ],
   noCheckToday: [
     '혹시 디톡스를 잊으셨나요? 오늘 베이비슈를 드셨더라도 용서해 드릴테니 다시 오세요, 웰컴!',
     '혹시 디톡스를 잊으셨나요? 오늘 엄마손파이를 드셨더라도 모른 척해 드릴테니 다시 오세요, 웰컴!',
@@ -119,6 +122,7 @@ export const TYPES: Record<MessageKind, 'letter' | 'simple'> = {
   streak14: 'simple',
   streak21: 'simple',
   dMinus3: 'simple',
+  dMinus3Letter: 'letter',
   noCheckToday: 'simple',
 };
 
@@ -142,6 +146,7 @@ export const TITLES: Record<MessageKind, string> = {
   fastTomorrow: '내일은 단식하는 날',
   noCheckToday: '오늘의 디톡스',
   dMinus3: '디톡스 D-3',
+  dMinus3Letter: SPECIAL_NOTICE.title,
   start: SPECIAL_NOTICE.title,
   day1: SPECIAL_NOTICE.title,
   week2Start: SPECIAL_NOTICE.title,
@@ -166,6 +171,7 @@ export const LABELS: Record<MessageKind, string> = {
   fastTomorrow: '내일 단식 예고',
   noCheckToday: '오늘의 디톡스',
   dMinus3: '디톡스 D-3',
+  dMinus3Letter: 'D-3 장보기 편지',
   start: '디톡스 시작 편지',
   day1: '1일차 편지',
   week2Start: '2주차 시작 편지',
