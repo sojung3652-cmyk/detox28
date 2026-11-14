@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isLetterKind } from '../data/notifications';
 import { DEFAULT_FAST_START, DEFAULT_MEAL_TIMES } from '../data/program';
 import type { ThemePref } from '../theme';
-import type { InboxEntry } from './letters';
+import type { InboxEntry, Letter } from './letters';
 import { type MealTimes, type Pause, setPauses } from './plan';
 
 // Same key as v1 so existing records carry over; missing fields are filled from EMPTY.
@@ -47,6 +47,8 @@ export type Persisted = {
   shopping: Record<string, string[]>; // week → checked shopping item ids
   celebrated: number[]; // streak milestones already celebrated
   inbox: InboxEntry[]; // letters (alarm texts) received so far, oldest first
+  alarmLog: Letter[]; // simple alarms that went off (for the 알림함 history), oldest first
+  alertsSeenAt: number; // when the 알림함 was last opened (the bell counts what arrived after)
   routineNoticeSeen: number[]; // weeks whose "new routine items" notice was dismissed
   debugOffsetDays: number;
   lastScheduledOn: string | null;
@@ -72,6 +74,8 @@ export const EMPTY: Persisted = {
   shopping: {},
   celebrated: [],
   inbox: [],
+  alarmLog: [],
+  alertsSeenAt: 0,
   routineNoticeSeen: [],
   debugOffsetDays: 0,
   lastScheduledOn: null,
@@ -82,6 +86,8 @@ export function normalize(raw: unknown): Persisted {
   if (!Array.isArray(p.inbox)) p.inbox = [];
   // The inbox keeps letters only: simple alarms saved by older versions are dropped (and so leave the popup queue).
   p.inbox = p.inbox.filter((e: { kind?: string }) => isLetterKind(e?.kind ?? ''));
+  if (!Array.isArray(p.alarmLog)) p.alarmLog = [];
+  if (typeof p.alertsSeenAt !== 'number') p.alertsSeenAt = 0;
   if (!Array.isArray(p.pauses)) p.pauses = [];
   if (!Array.isArray(p.history)) p.history = [];
   setPauses(p.pauses); // every load path (app, widget, notification buttons) sees the same pauses

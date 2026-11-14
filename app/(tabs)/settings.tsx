@@ -1,3 +1,4 @@
+import { AlertBell } from '../../components/AlertBell';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -70,7 +71,10 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScrollView contentContainerStyle={s.wrap}>
-        <T size="h1" medium>설정</T>
+        <View style={s.titleRow}>
+          <T size="h1" medium style={{ flex: 1 }}>설정</T>
+          <AlertBell />
+        </View>
 
         <Card style={s.list}>
           <Row label="시작 날짜 (1일차)" value={formatDateKo(parseDateKey(st.startDate))} onPress={changeStart} />
@@ -331,6 +335,7 @@ function DebugCard() {
 }
 
 const s = StyleSheet.create({
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   wrap: { padding: spacing.screen, gap: spacing.xl, paddingBottom: 48 },
   list: { gap: 0, paddingVertical: spacing.xs },
   section: { paddingHorizontal: spacing.xs },

@@ -77,7 +77,7 @@ export function scheduleInputs(st: Persisted): ScheduleInputs | null {
   };
 }
 
-/** Only letters (TYPES = 'letter') go to the outbox → inbox; simple alarms are just notifications. */
+/** Only letters (TYPES = 'letter') reach the inbox; simple alarms pass through the outbox only for the 알림함 log. */
 const isLetter = (a: AlarmSpec) => isLetterKind(a.kind);
 
 const toLetter = (a: AlarmSpec): Letter => ({ id: a.id, at: a.date.getTime(), kind: a.kind, key: a.key, text: a.text, special: a.special });
@@ -112,7 +112,7 @@ export async function rescheduleAll(st: Persisted) {
   }
   const alarms = buildAlarms(inp, new Date());
   for (const a of alarms) await scheduleOne(a);
-  await saveOutbox(alarms.filter(isLetter).map(toLetter));
+  await saveOutbox(alarms.map(toLetter));
   return alarms.length;
 }
 
@@ -137,10 +137,16 @@ export async function syncStreakAlarms(st: Persisted) {
   for (const l of existing) {
     if (!want.some((w) => w.id === l.id && w.date.getTime() === l.at)) await Notifications.cancelScheduledNotificationAsync(l.id).catch(() => {});
   }
-  if (!(await hasNotificationPermission())) return;
+  const ob = await loadOutbox();
+  const keep = ob.filter((l) => !l.id.startsWith('streak-'));
+  if (!(await hasNotificationPermission())) {
+    await saveOutbox(keep);
+    return;
+  }
   for (const w of want) {
     if (!existing.some((l) => l.id === w.id && l.at === w.date.getTime())) await scheduleOne(w);
   }
+  await saveOutbox([...keep, ...want.map(toLetter)]);
 }
 
 export async function cancelAll() {
@@ -172,7 +178,7 @@ export async function sendAllKindsPreview(st: Persisted): Promise<Letter[]> {
   if (Platform.OS !== 'web') {
     await ensureChannel();
     for (const a of specs) await scheduleOne(a);
-    await saveOutbox([...(await loadOutbox()), ...specs.filter(isLetter).map(toLetter)]);
+    await saveOutbox([...(await loadOutbox()), ...specs.map(toLetter)]);
   }
   return specs.filter(isLetter).map(toLetter);
 }

@@ -1,4 +1,5 @@
 import {
+  Bell,
   CalendarDays,
   ChartLine,
   Check,
@@ -73,6 +74,7 @@ const MAP = {
   pause: Pause,
   stop: CircleStop,
   repeat: Repeat,
+  bell: Bell,
 } as const;
 
 export type IconName = keyof typeof MAP;

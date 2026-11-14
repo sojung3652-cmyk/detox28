@@ -4,7 +4,7 @@ import { BodyLog, EMPTY, Persisted, Settings, loadState, normalize, saveState } 
 import { dateKey, parseDateKey, programDay, setPauses } from './plan';
 import { endRound, pauseRound, resumeRound, setRepeat, shouldRollover } from './round';
 import { cancelAlarm, cancelAll, rescheduleAll, scheduleInputs, scheduledCount, sendAllKindsPreview, syncStreakAlarms } from './notifications';
-import { InboxEntry, Letter, addMissing, letterRef, loadOutbox, moveDue, saveOutbox } from './letters';
+import { InboxEntry, Letter, addMissing, addToLog, letterRef, loadOutbox, moveDue, saveOutbox } from './letters';
 import { dueSpecialLetters } from './schedule';
 import { refreshWidget } from './widgetBridge';
 import { MESSAGES } from '../data/notifications';
@@ -33,6 +33,8 @@ type Ctx = Persisted & {
   chooseRepeat: (months: number) => Promise<void>;
   /** Puts the start letter straight into the inbox (pressing 시작하기 → it pops up on the main screen). */
   sendStartLetter: () => void;
+  /** 알림함 opened: the bell's count goes back to 0. */
+  markAlertsSeen: () => void;
   setBody: (day: string, log: BodyLog) => void;
   setFastStart: (fastId: string, startMs: number | null) => Promise<void>;
   stopFast: (id: string) => Promise<void>;
@@ -77,7 +79,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const inp = scheduleInputs(stateRef.current);
     const missed = inp ? dueSpecialLetters(inp, new Date(now)).map((a) => ({ id: a.id, at: a.date.getTime(), kind: a.kind, key: a.key, text: a.text, special: a.special })) : [];
     const m = addMissing(r.inbox, missed);
-    if (r.added || m.added) update((p) => ({ ...p, inbox: addMissing(moveDue(p.inbox, ob, now).inbox, missed).inbox }));
+    const lg = addToLog(stateRef.current.alarmLog, r.simple);
+    if (r.added || m.added || lg.added)
+      update((p) => ({ ...p, inbox: addMissing(moveDue(p.inbox, ob, now).inbox, missed).inbox, alarmLog: addToLog(p.alarmLog, r.simple).log }));
     if (r.outbox.length !== ob.length) await saveOutbox(r.outbox);
   }, [update]);
 
@@ -191,6 +195,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const letter: Letter = { id: 'letter-start', at, kind: 'start', key: 'start.0', text: MESSAGES.start[0], special: true };
         update((s) => ({ ...s, inbox: addMissing(s.inbox, [letter]).inbox }));
       },
+      markAlertsSeen: () => update((s) => ({ ...s, alertsSeenAt: Date.now() })),
       setBody: (day, log) => update((s) => ({ ...s, body: { ...s.body, [day]: { ...s.body[day], ...log } } })),
       setFastStart: async (fastId, startMs) => {
         update((s) => {

@@ -1,3 +1,4 @@
+import { AlertBell } from '../../components/AlertBell';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
@@ -61,9 +62,14 @@ function Paused({ day }: { day: number }) {
   const since = app.pauses.find((p) => !p.to)!.from;
   return (
     <>
-      <View>
-        <T tone="sub">일시정지 중</T>
-        <T size="display" medium>{day}일차</T>
+      <View style={s.top}>
+        <View style={{ flex: 1 }}>
+          <T tone="sub">일시정지 중</T>
+          <T size="display" medium>{day}일차</T>
+        </View>
+        <View style={s.bellTop}>
+          <AlertBell />
+        </View>
       </View>
       <Card style={{ gap: spacing.md }}>
         <T>{formatDateKo(parseDateKey(since))}부터 쉬고 있어요. 알람도 모두 멈춰 있어요.</T>
@@ -77,9 +83,14 @@ function Paused({ day }: { day: number }) {
 function BeforeStart({ daysLeft }: { daysLeft: number }) {
   return (
     <>
-      <View>
-        <T tone="sub">시작까지</T>
-        <T size="display" medium>D-{daysLeft}</T>
+      <View style={s.top}>
+        <View style={{ flex: 1 }}>
+          <T tone="sub">시작까지</T>
+          <T size="display" medium>D-{daysLeft}</T>
+        </View>
+        <View style={s.bellTop}>
+          <AlertBell />
+        </View>
       </View>
       <GoalCard week={1} />
       <Card>
@@ -93,9 +104,14 @@ function BeforeStart({ daysLeft }: { daysLeft: number }) {
 function Finished() {
   return (
     <>
-      <View>
-        <T tone="sub">4주 완주</T>
-        <T size="display" medium>28일</T>
+      <View style={s.top}>
+        <View style={{ flex: 1 }}>
+          <T tone="sub">4주 완주</T>
+          <T size="display" medium>28일</T>
+        </View>
+        <View style={s.bellTop}>
+          <AlertBell />
+        </View>
       </View>
       <Card>
         <T>4주 동안 정말 수고 많았어요.</T>
@@ -129,6 +145,9 @@ function InProgram({ day, now }: { day: number; now: Date }) {
         <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
           <T size="caption" tone="faint">오늘 저녁</T>
           <Badge label={DINNER_LABEL[dinner]} />
+        </View>
+        <View style={s.bellTop}>
+          <AlertBell />
         </View>
       </View>
 
@@ -421,6 +440,7 @@ function MemoCard({ dk, incident }: { dk: string; incident?: boolean }) {
 const s = StyleSheet.create({
   wrap: { padding: spacing.screen, gap: spacing.lg, paddingBottom: 48 },
   top: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, marginBottom: spacing.xs },
+  bellTop: { alignSelf: 'flex-start' },
   goal: { borderRadius: radius.card, padding: spacing.xl, gap: spacing.sm },
   goalHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   times: { flexDirection: 'row', alignSelf: 'stretch', gap: spacing.md },

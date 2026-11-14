@@ -1,3 +1,4 @@
+import { AlertBell } from '../../components/AlertBell';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -37,6 +38,7 @@ export default function Record() {
             <Icon name="cart" size={16} />
             <T size="small" medium>장보기</T>
           </Pressable>
+          <AlertBell />
         </View>
 
         <View style={s.stats}>

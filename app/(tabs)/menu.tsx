@@ -1,3 +1,4 @@
+import { AlertBell } from '../../components/AlertBell';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -64,6 +65,7 @@ export default function MenuScreen() {
             <Icon name="cart" size={16} />
             <T size="small" medium>장보기</T>
           </Pressable>
+          <AlertBell />
         </View>
 
         <View style={{ gap: spacing.md }}>

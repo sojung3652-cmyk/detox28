@@ -28,8 +28,7 @@ export async function loadOutbox(): Promise<Letter[]> {
   try {
     const raw = await AsyncStorage.getItem(OUTBOX_KEY);
     const v = raw ? JSON.parse(raw) : [];
-    // Only letters live in the outbox (older versions also kept simple alarms there).
-    return Array.isArray(v) ? v.filter((l) => isLetterKind(l?.kind)) : [];
+    return Array.isArray(v) ? v : [];
   } catch {
     return [];
   }
@@ -52,12 +51,25 @@ export function addMissing(inbox: InboxEntry[], letters: Letter[]) {
   return { inbox: added.length ? [...inbox, ...added].sort((a, b) => a.at - b.at) : inbox, added: added.length };
 }
 
-/** Moves due outbox letters into the inbox. Pure; never adds the same messageKey + date twice. */
+/**
+ * Moves due outbox entries out: letters into the inbox, simple alarms into `simple` (for the alarm log).
+ * Pure; never adds the same messageKey + date twice to the inbox.
+ */
 export function moveDue(inbox: InboxEntry[], outbox: Letter[], now: number) {
   const due = outbox.filter((l) => l.at <= now);
   const rest = outbox.filter((l) => l.at > now);
-  const r = addMissing(inbox, due);
-  return { inbox: r.inbox, outbox: rest, added: r.added };
+  const r = addMissing(inbox, due.filter((l) => isLetterKind(l.kind)));
+  return { inbox: r.inbox, outbox: rest, added: r.added, simple: due.filter((l) => !isLetterKind(l.kind)) };
+}
+
+export const LOG_LIMIT = 400;
+
+/** Adds simple alarms that went off to the log (by id + time), keeping the newest LOG_LIMIT. Pure. */
+export function addToLog(log: Letter[], items: Letter[]) {
+  const have = new Set(log.map(letterRef));
+  const added = items.filter((l) => !have.has(letterRef(l)));
+  if (!added.length) return { log, added: 0 };
+  return { log: [...log, ...added].sort((a, b) => a.at - b.at).slice(-LOG_LIMIT), added: added.length };
 }
 
 /** Most recent key per kind, so new random picks don't repeat the last delivered text. */
