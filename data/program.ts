@@ -218,68 +218,65 @@ export const FAST_CHEERS = [
 ];
 
 // ───────────────────────── 주차별 장보기 리스트 (미국 마트 기준) ─────────────────────────
-// section: 마트 코너. id는 체크 기록에 쓰여요.
+// 각 주차의 루틴(routine) + 간식(snackPicks)에 나오는 재료만 담아요. 그 주에 못 먹는 건 넣지 않아요
+// (예: 1주차엔 과일·견과류 없음, 토마토는 3주차부터).
+// section: 마트 코너 (처음 나온 순서대로 묶여요). id는 체크 기록에 쓰여요.
 
 export type ShoppingItem = { id: string; ko: string; en: string; section: string };
 
-const BASE_SHOPPING: ShoppingItem[] = [
-  { id: 'broccoli', ko: '브로콜리', en: 'broccoli crowns', section: '채소 · 과일 (Produce)' },
-  { id: 'greenbean', ko: '그린빈', en: 'green beans', section: '채소 · 과일 (Produce)' },
-  { id: 'bellpepper', ko: '벨페퍼 (파프리카)', en: 'bell peppers', section: '채소 · 과일 (Produce)' },
-  { id: 'carrot', ko: '당근', en: 'carrots', section: '채소 · 과일 (Produce)' },
-  { id: 'avocado', ko: '아보카도', en: 'avocados', section: '채소 · 과일 (Produce)' },
-  { id: 'blueberry', ko: '블루베리', en: 'blueberries', section: '채소 · 과일 (Produce)' },
-  { id: 'eggs', ko: '달걀', en: 'eggs (2 dozen)', section: '단백질 (Meat · Eggs · Tofu)' },
-  { id: 'tofu', ko: '두부', en: 'extra firm tofu', section: '단백질 (Meat · Eggs · Tofu)' },
-  { id: 'chicken', ko: '닭가슴살', en: 'boneless skinless chicken breast', section: '단백질 (Meat · Eggs · Tofu)' },
-  { id: 'salmon', ko: '연어', en: 'salmon fillet', section: '단백질 (Meat · Eggs · Tofu)' },
-  { id: 'yogurt', ko: '플레인 그릭요거트', en: 'Greek yogurt plain, unsweetened', section: '유제품 (Dairy)' },
-  { id: 'nuts', ko: '견과류', en: 'almonds, Brazil nuts, walnuts (unsalted)', section: '견과 · 기타 (Pantry)' },
-  { id: 'oliveoil', ko: '올리브오일', en: 'extra virgin olive oil', section: '견과 · 기타 (Pantry)' },
-  { id: 'natto', ko: '낫토', en: 'natto (frozen)', section: '아시안 마켓 (H Mart)' },
-];
+const P = '채소 · 과일 (Produce)';
+const M = '단백질 (Meat · Eggs · Tofu)';
+const D = '유제품 (Dairy)';
+const N = '견과 · 기타 (Pantry)';
+const H = '아시안 마켓 (H Mart)';
+const F = '냉동 (Frozen)';
+
+const S = {
+  broccoli: { id: 'broccoli', ko: '브로콜리', en: 'broccoli crowns', section: P },
+  greenbean: { id: 'greenbean', ko: '그린빈', en: 'green beans', section: P },
+  bellpepper: { id: 'bellpepper', ko: '벨페퍼 (파프리카)', en: 'bell peppers', section: P },
+  carrot: { id: 'carrot', ko: '당근', en: 'carrots', section: P },
+  avocado: { id: 'avocado', ko: '아보카도', en: 'avocados', section: P },
+  cucumber: { id: 'cucumber', ko: '오이', en: 'Persian cucumbers', section: P },
+  cabbage: { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: P },
+  tomato: { id: 'tomato', ko: '토마토', en: 'tomatoes / cherry tomatoes', section: P },
+  blueberry: { id: 'blueberry', ko: '블루베리', en: 'blueberries', section: P },
+  berry: { id: 'berry', ko: '베리류', en: 'blueberries, raspberries, blackberries', section: P },
+  banana: { id: 'banana', ko: '바나나', en: 'bananas', section: P },
+  apple: { id: 'apple', ko: '사과', en: 'apples (Honeycrisp, Fuji)', section: P },
+  sweetpotato: { id: 'sweet-potato', ko: '고구마', en: 'Japanese sweet potatoes', section: P },
+  potato: { id: 'potato', ko: '감자', en: 'baby potatoes / Yukon Gold', section: P },
+  kiwi: { id: 'kiwi', ko: '키위', en: 'kiwi', section: P },
+  pear: { id: 'pear', ko: '배', en: 'Asian pears', section: P },
+  strawberry: { id: 'strawberry', ko: '딸기', en: 'strawberries', section: P },
+  eggs: { id: 'eggs', ko: '달걀', en: 'eggs (2 dozen)', section: M },
+  tofu: { id: 'tofu', ko: '두부', en: 'extra firm tofu', section: M },
+  chicken: { id: 'chicken', ko: '닭가슴살', en: 'boneless skinless chicken breast', section: M },
+  yogurt: { id: 'yogurt', ko: '플레인 그릭요거트', en: 'Greek yogurt plain, unsweetened', section: D },
+  soymilk: { id: 'soymilk', ko: '무가당 두유', en: 'unsweetened soy milk', section: D },
+  almondmilk: { id: 'almondmilk', ko: '무가당 아몬드밀크', en: 'unsweetened almond milk', section: D },
+  cheese: { id: 'cheese', ko: '치즈', en: 'cheddar cheese', section: D },
+  nuts: { id: 'nuts', ko: '견과류', en: 'almonds, Brazil nuts, walnuts (unsalted)', section: N },
+  walnut: { id: 'walnut', ko: '호두', en: 'walnuts (unsalted)', section: N },
+  oliveoil: { id: 'oliveoil', ko: '올리브오일', en: 'extra virgin olive oil', section: N },
+  cacaonibs: { id: 'cacao-nibs', ko: '카카오닙스', en: 'cacao nibs', section: N },
+  darkchoco: { id: 'dark-choco', ko: '다크초콜릿 85%', en: 'dark chocolate 85% cacao', section: N },
+  crackers: { id: 'crackers', ko: '무염 크래커', en: 'unsalted crackers', section: N },
+  driedmango: { id: 'dried-mango', ko: '말린 망고', en: 'dried mango, no sugar added', section: N },
+  bananachips: { id: 'banana-chips', ko: '바나나칩', en: 'banana chips', section: N },
+  broth: { id: 'broth', ko: '채소 육수 (단식 후 수프용)', en: 'low-sodium vegetable broth', section: N },
+  natto: { id: 'natto', ko: '낫토', en: 'natto (frozen)', section: H },
+  ssamjang: { id: 'ssamjang', ko: '쌈장', en: 'ssamjang', section: H },
+  icecream: { id: 'icecream', ko: '바닐라 아이스크림', en: 'vanilla ice cream (small pint)', section: F },
+} satisfies Record<string, ShoppingItem>;
 
 export const SHOPPING: Record<1 | 2 | 3 | 4, ShoppingItem[]> = {
-  1: [
-    ...BASE_SHOPPING,
-    { id: 'cucumber', ko: '오이', en: 'Persian cucumbers', section: '채소 · 과일 (Produce)' },
-    { id: 'ssamjang', ko: '쌈장', en: 'ssamjang', section: '아시안 마켓 (H Mart)' },
-    { id: 'cauli-rice', ko: '콜리플라워 라이스', en: 'cauliflower rice (frozen)', section: '냉동 (Frozen)' },
-  ],
-  2: [
-    ...BASE_SHOPPING,
-    { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
-    { id: 'cucumber', ko: '오이', en: 'Persian cucumbers', section: '채소 · 과일 (Produce)' },
-    { id: 'soymilk', ko: '무가당 두유', en: 'unsweetened soy milk', section: '유제품 (Dairy)' },
-    { id: 'cacao-nibs', ko: '카카오닙스', en: 'cacao nibs', section: '견과 · 기타 (Pantry)' },
-    { id: 'broth', ko: '채소 육수 (단식 후 수프용)', en: 'low-sodium vegetable broth', section: '견과 · 기타 (Pantry)' },
-  ],
-  3: [
-    ...BASE_SHOPPING,
-    { id: 'tomato', ko: '토마토', en: 'tomatoes / cherry tomatoes', section: '채소 · 과일 (Produce)' },
-    { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
-    { id: 'banana', ko: '바나나', en: 'bananas', section: '채소 · 과일 (Produce)' },
-    { id: 'apple', ko: '사과', en: 'apples (Honeycrisp, Fuji)', section: '채소 · 과일 (Produce)' },
-    { id: 'sweet-potato', ko: '고구마', en: 'Japanese sweet potatoes', section: '채소 · 과일 (Produce)' },
-    { id: 'potato', ko: '감자', en: 'baby potatoes / Yukon Gold', section: '채소 · 과일 (Produce)' },
-    { id: 'kabocha', ko: '단호박', en: 'kabocha squash', section: '채소 · 과일 (Produce)' },
-    { id: 'soymilk', ko: '무가당 두유', en: 'unsweetened soy milk', section: '유제품 (Dairy)' },
-    { id: 'almondmilk', ko: '무가당 아몬드밀크', en: 'unsweetened almond milk', section: '유제품 (Dairy)' },
-    { id: 'dark-choco', ko: '다크초콜릿 85%', en: 'dark chocolate 85% cacao', section: '견과 · 기타 (Pantry)' },
-  ],
-  4: [
-    ...BASE_SHOPPING,
-    { id: 'tomato', ko: '토마토', en: 'tomatoes / cherry tomatoes', section: '채소 · 과일 (Produce)' },
-    { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
-    { id: 'apple', ko: '사과', en: 'apples', section: '채소 · 과일 (Produce)' },
-    { id: 'sweet-potato', ko: '고구마', en: 'Japanese sweet potatoes', section: '채소 · 과일 (Produce)' },
-    { id: 'kiwi', ko: '키위', en: 'kiwi', section: '채소 · 과일 (Produce)' },
-    { id: 'pear', ko: '배', en: 'Asian pears', section: '채소 · 과일 (Produce)' },
-    { id: 'strawberry', ko: '딸기', en: 'strawberries', section: '채소 · 과일 (Produce)' },
-    { id: 'soymilk', ko: '무가당 두유', en: 'unsweetened soy milk', section: '유제품 (Dairy)' },
-    { id: 'cheese', ko: '치즈', en: 'cheddar cheese', section: '유제품 (Dairy)' },
-    { id: 'crackers', ko: '무염 크래커', en: 'unsalted crackers', section: '견과 · 기타 (Pantry)' },
-    { id: 'dried-mango', ko: '말린 망고', en: 'dried mango, no sugar added', section: '견과 · 기타 (Pantry)' },
-    { id: 'banana-chips', ko: '바나나칩', en: 'banana chips', section: '견과 · 기타 (Pantry)' },
-  ],
+  // 루틴: 브로콜리 그린빈 아보카도 파프리카 당근 달걀 두부 낫토 올리브오일 / 간식: 요거트, 찐 닭가슴살, 생오이+쌈장
+  1: [S.broccoli, S.greenbean, S.bellpepper, S.carrot, S.avocado, S.cucumber, S.eggs, S.tofu, S.chicken, S.yogurt, S.oliveoil, S.natto, S.ssamjang],
+  // + 양배추 오이 견과류 블루베리 / 간식: 두유, 요거트, 두부, 카카오닙스, 아보카도+으깬 달걀 (+ 단식 후 수프용 육수)
+  2: [S.broccoli, S.greenbean, S.bellpepper, S.carrot, S.avocado, S.cabbage, S.cucumber, S.blueberry, S.eggs, S.tofu, S.yogurt, S.soymilk, S.nuts, S.cacaonibs, S.oliveoil, S.broth, S.natto],
+  // + 토마토 바나나 사과 / 간식: 두유, 찐 고구마, 요거트+베리류, 찐 감자, 다크초콜릿, 아몬드밀크+바닐라 아이스크림
+  3: [S.broccoli, S.greenbean, S.bellpepper, S.carrot, S.avocado, S.tomato, S.cabbage, S.cucumber, S.blueberry, S.banana, S.apple, S.sweetpotato, S.potato, S.eggs, S.yogurt, S.soymilk, S.almondmilk, S.nuts, S.darkchoco, S.oliveoil, S.broth, S.natto, S.icecream],
+  // 견과류→호두, 블루베리→베리류, 바나나→삶은 고구마, 오이 빠짐 / 간식: 두유, 요거트+베리류, 키위, 배, 말린 망고, 다크초콜릿, 바나나칩, 크래커+치즈+딸기, 아몬드밀크+아이스크림
+  4: [S.broccoli, S.greenbean, S.bellpepper, S.carrot, S.avocado, S.tomato, S.cabbage, S.berry, S.apple, S.sweetpotato, S.kiwi, S.pear, S.strawberry, S.eggs, S.yogurt, S.soymilk, S.almondmilk, S.cheese, S.walnut, S.darkchoco, S.crackers, S.driedmango, S.bananachips, S.oliveoil, S.broth, S.natto, S.icecream],
 };
