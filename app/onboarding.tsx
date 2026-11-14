@@ -49,6 +49,18 @@ export default function Onboarding() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView contentContainerStyle={st.wrap}>
+        {step === 0 ? (
+          // Opened from the tabs (browse mode): go back to looking around.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="뒤로"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/today'))}
+            hitSlop={12}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            <Icon name="left" />
+          </Pressable>
+        ) : null}
         <View style={st.dots}>
           {[0, 1, 2, 3].map((i) => (
             <View key={i} style={[st.dot, { backgroundColor: i <= step ? c.accent : c.line }]} />
@@ -97,7 +109,7 @@ export default function Onboarding() {
                 <View key={r.key}>
                   {i > 0 ? <Divider /> : null}
                   <Pressable onPress={() => pickTime(times[r.key], (v) => setTimes((p) => ({ ...p, [r.key]: v })))} style={st.timeRow}>
-                    <T style={{ flex: 1 }}>{r.key === 'breakfast' && skip === 'breakfast' ? '아침 편지 시각' : r.label}</T>
+                    <T style={{ flex: 1 }}>{r.label}</T>
                     <T medium>{timeKo(times[r.key])}</T>
                     <Icon name="right" size={18} color={c.faint} />
                   </Pressable>
@@ -105,7 +117,7 @@ export default function Onboarding() {
               ))}
             </Card>
             <T size="caption" tone="sub">
-              단식은 단식하는 날 이 시간에 시작해 24시간 이어져요.{skip === 'breakfast' ? ' 아침을 안 드셔도 편지는 아침 편지 시각에 와요.' : ''}
+              단식은 단식하는 날 이 시간에 시작해 24시간 이어져요.
             </T>
             <Button label="다음" onPress={() => setStep(3)} />
             <Button label="이전" kind="quiet" onPress={() => setStep(1)} />

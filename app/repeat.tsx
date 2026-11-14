@@ -20,7 +20,7 @@ export default function RepeatScreen() {
   const done = async () => {
     if (months == null) return;
     await app.chooseRepeat(months);
-    router.replace(months > 0 ? '/today' : '/onboarding');
+    router.replace('/today');
   };
 
   return (
@@ -34,7 +34,7 @@ export default function RepeatScreen() {
           {preview ? (
             <T size="small" tone="sub">다음 디톡스는 {formatDateKo(preview)}에 시작해요. 3일 전에 알려 드릴게요.</T>
           ) : months === 0 ? (
-            <T size="small" tone="sub">언제든 처음 화면에서 새로 시작할 수 있어요.</T>
+            <T size="small" tone="sub">오늘 탭의 '디톡스 시작하기'로 언제든 새로 시작할 수 있어요.</T>
           ) : null}
         </Card>
         <Button label="확인" onPress={done} disabled={months == null} />

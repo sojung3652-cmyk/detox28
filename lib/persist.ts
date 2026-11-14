@@ -10,7 +10,7 @@ import { type MealTimes, type Pause, type SkipMeal, setPauses } from './plan';
 // Same key as v1 so existing records carry over; missing fields are filled from EMPTY.
 export const KEY = '@detox28/state/v1';
 
-/** skip: the meal left out on a 2-meal day (none = 3 meals). Breakfast time stays the morning letter time. */
+/** skip: 'lunch' on a 2-meal day (none = 3 meals). The old 'breakfast' option was dropped and loads as 3 meals. */
 export type Settings = { startDate: string; meals: MealTimes; fastStart: string; skip?: SkipMeal | null };
 export type BodyLog = { weightLb?: number; condition?: 1 | 2 | 3 | 4 | 5; note?: string };
 
@@ -102,9 +102,10 @@ export function normalize(raw: unknown): Persisted {
       startDate: p.settings.startDate,
       meals: { ...DEFAULT_MEAL_TIMES, ...p.settings.meals },
       fastStart: p.settings.fastStart ?? DEFAULT_FAST_START,
-      skip: p.settings.skip === 'breakfast' || p.settings.skip === 'lunch' ? p.settings.skip : null,
+      skip: p.settings.skip === 'lunch' ? 'lunch' : null,
     };
   }
+  if (p.lastSettings && p.lastSettings.skip !== 'lunch') p.lastSettings = { ...p.lastSettings, skip: null };
   return p;
 }
 

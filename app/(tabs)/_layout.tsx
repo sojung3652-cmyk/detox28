@@ -13,11 +13,10 @@ const tab = (title: string, icon: IconName) => ({
 export default function TabsLayout() {
   const { loaded, settings, history, repeatAsked } = useApp();
   const { c } = useTheme();
-  // Every tab assumes settings exist. Guard here so a deep link before storage loads,
-  // or a reset while a tab is mounted, can't render a tab with null settings.
   if (!loaded) return <View style={{ flex: 1, backgroundColor: c.bg }} />;
   // Just stopped a round: ask about repeating before anything else.
-  if (!settings) return <Redirect href={history.length && !repeatAsked ? '/repeat' : '/onboarding'} />;
+  // With no round at all the tabs still open (browse mode); each tab handles settings === null.
+  if (!settings && history.length && !repeatAsked) return <Redirect href="/repeat" />;
   return (
     <Tabs
       screenOptions={{

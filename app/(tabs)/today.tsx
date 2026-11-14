@@ -38,12 +38,14 @@ export default function Today() {
   const { c } = useTheme();
   const app = useApp();
   const now = useNow(60000); // ring + countdown refresh once a minute
-  const day = programDay(app.settings!.startDate, now);
+  const day = app.settings ? programDay(app.settings.startDate, now) : 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
-        {isPaused(app) ? (
+        {!app.settings ? (
+          <NoRound />
+        ) : isPaused(app) ? (
           <Paused day={day} />
         ) : day < 1 ? (
           <BeforeStart daysLeft={1 - day} />
@@ -75,6 +77,33 @@ function Paused({ day }: { day: number }) {
         <T>{formatDateKo(parseDateKey(since))}부터 쉬고 있어요. 알람도 모두 멈춰 있어요.</T>
         <T size="small" tone="sub">다시 시작하면 {day}일차부터 이어서 해요.</T>
         <Button icon="play" label="다시 시작" onPress={() => app.resume()} />
+      </Card>
+    </>
+  );
+}
+
+/** No detox set up yet (or the last one was stopped): look around the app, then start from here. */
+function NoRound() {
+  return (
+    <>
+      <View style={s.top}>
+        <View style={{ flex: 1 }}>
+          <T tone="sub">4주 디톡스</T>
+          <T size="display" medium>Detox28</T>
+        </View>
+        <View style={s.bellTop}>
+          <AlertBell />
+        </View>
+      </View>
+      <Card style={{ gap: spacing.md }}>
+        <T>아직 진행 중인 디톡스가 없어요. 메뉴, 기록, 설정을 먼저 둘러봐도 괜찮아요.</T>
+        <T size="small" tone="sub">시작 날짜와 식사 시간을 정하면 그날부터 알람이 같이 챙겨요.</T>
+        <Button icon="play" label="디톡스 시작하기" onPress={() => router.push('/onboarding')} />
+      </Card>
+      <GoalCard week={1} />
+      <Card>
+        <T>시작하기 전에 1주차 장을 봐 두면 좋아요.</T>
+        <Button kind="outline" icon="cart" label="1주차 장보기 리스트" onPress={() => router.push('/shopping')} />
       </Card>
     </>
   );
@@ -390,7 +419,7 @@ function TimeCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function nextMeal(now: Date, meals: { breakfast: string; lunch: string; dinner: string }, skip?: 'breakfast' | 'lunch' | null) {
+function nextMeal(now: Date, meals: { breakfast: string; lunch: string; dinner: string }, skip?: 'lunch' | null) {
   const list = [
     { key: 'breakfast', label: '아침', t: meals.breakfast },
     { key: 'lunch', label: '점심', t: meals.lunch },

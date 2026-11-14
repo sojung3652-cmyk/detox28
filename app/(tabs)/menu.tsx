@@ -30,13 +30,14 @@ export default function MenuScreen() {
   const { c } = useTheme();
   const app = useApp();
   const now = useNow();
-  const st = app.settings!;
-  const day = Math.min(PROGRAM_DAYS, Math.max(1, programDay(st.startDate, now)));
+  const st = app.settings; // null while no detox is set up: browse from week 1
+  const day = st ? Math.min(PROGRAM_DAYS, Math.max(1, programDay(st.startDate, now))) : 1;
   const currentWeek = weekOfDay(day);
 
   // Tab that fits today (only used while viewing the current week):
   // fast ends today → post-fast; low-carb dinner tonight → low-carb; otherwise normal.
   const autoTab = (): MenuCategory => {
+    if (!st) return 'lowcarb';
     const fasts = activeFasts({ startDate: st.startDate, fastStart: st.fastStart, overrides: app.fastOverrides, stopped: app.stoppedFasts });
     if (fasts.some((f) => sameDay(f.end, now))) return 'postfast';
     return dinnerTypeOf(st.startDate, day) === 'lowcarb' ? 'lowcarb' : 'normal';

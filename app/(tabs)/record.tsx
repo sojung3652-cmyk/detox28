@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { Icon } from '../../components/Icon';
 import { InboxCard } from '../../components/InboxCard';
-import { Card, CardHeader, Divider, Pill, T, tapFeedback } from '../../components/ui';
+import { Button, Card, CardHeader, Divider, Pill, T, tapFeedback } from '../../components/ui';
 import { PROGRAM_DAYS } from '../../data/program';
 import { dateKey, dateOfDay, formatDateKo, parseDateKey, programDay, routineProgress, weekOfDay } from '../../lib/plan';
 import { roundSummary } from '../../lib/round';
@@ -19,6 +19,35 @@ const MEAL_LABEL = { breakfast: '아침', lunch: '점심', dinner: '저녁' } as
 const CONDITIONS = ['힘들어요', '조금 힘들어요', '보통이에요', '좋아요', '아주 좋아요'];
 
 export default function Record() {
+  const app = useApp();
+  return app.settings ? <RecordBody /> : <RecordEmpty />;
+}
+
+/** No detox set up yet: past rounds (if any) and a way to start. */
+function RecordEmpty() {
+  const { c } = useTheme();
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
+      <ScrollView contentContainerStyle={s.wrap}>
+        <View style={s.titleRow}>
+          <T size="h1" medium style={{ flex: 1 }}>기록</T>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/shopping')} style={[s.chip, { borderColor: c.lineSoft, backgroundColor: c.card }]}>
+            <Icon name="cart" size={16} />
+            <T size="small" medium>장보기</T>
+          </Pressable>
+          <AlertBell />
+        </View>
+        <Card style={{ gap: spacing.md }}>
+          <T>디톡스를 시작하면 28일 달력, 연속 기록, 단식, 체중, 메모가 여기에 쌓여요.</T>
+          <Button icon="play" label="디톡스 시작하기" onPress={() => router.push('/onboarding')} />
+        </Card>
+        <HistoryCard />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function RecordBody() {
   const { c } = useTheme();
   const app = useApp();
   const now = useNow();

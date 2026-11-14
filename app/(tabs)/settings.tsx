@@ -39,7 +39,7 @@ const THEMES: { key: ThemePref; label: string }[] = [
 export default function SettingsScreen() {
   const { c } = useTheme();
   const app = useApp();
-  const st = app.settings!;
+  const st = app.settings; // null while no detox is set up (browse mode)
   const [notif, setNotif] = useState<boolean | null>(null);
   const [exact, setExact] = useState<boolean | null>(null);
   const [count, setCount] = useState<number | null>(null);
@@ -60,6 +60,7 @@ export default function SettingsScreen() {
   };
 
   const changeStart = () =>
+    st &&
     pickDate(st.startDate, (key) => {
       if (key === st.startDate) return;
       Alert.alert('시작 날짜를 바꿀까요?', `${formatDateKo(parseDateKey(key))}이 1일차가 되고, 알람을 전부 다시 예약해요.`, [
@@ -76,40 +77,49 @@ export default function SettingsScreen() {
           <AlertBell />
         </View>
 
-        <Card style={s.list}>
-          <Row label="시작 날짜 (1일차)" value={formatDateKo(parseDateKey(st.startDate))} onPress={changeStart} />
-        </Card>
-
-        <DetoxCard />
-
-        <View style={{ gap: spacing.sm }}>
-          <T size="small" tone="sub" style={s.section}>시간</T>
-          <Card style={{ gap: spacing.sm }}>
-            <T size="small" tone="sub">하루 식사</T>
-            <View style={s.pills}>
-              {MEAL_PLANS.map((o) => (
-                <Pill key={o.label} label={o.label} selected={(st.skip ?? null) === o.skip} onPress={() => save({ ...st, skip: o.skip })} />
-              ))}
-            </View>
-            <T size="caption" tone="faint">저녁은 탄수화물 규칙과 단식 시간에 맞춰져 있어서 빼지 않아요.</T>
-          </Card>
+        {st ? (
+          <>
           <Card style={s.list}>
-            {MEALS.filter((m) => m.key !== st.skip || m.key === 'breakfast').map((m) => (
-              <View key={m.key}>
-                <Row
-                  label={m.key === 'breakfast' && st.skip === 'breakfast' ? '아침 편지 시각' : m.label}
-                  value={timeKo(st.meals[m.key])}
-                  onPress={() => pickTime(st.meals[m.key], (v) => save({ ...st, meals: { ...st.meals, [m.key]: v } }))}
-                />
-                <Divider />
-              </View>
-            ))}
-            <Row label="기본 단식 시작 시간" value={timeKo(st.fastStart)} onPress={() => pickTime(st.fastStart, (v) => save({ ...st, fastStart: v }))} />
+            <Row label="시작 날짜 (1일차)" value={formatDateKo(parseDateKey(st.startDate))} onPress={changeStart} />
           </Card>
-          <T size="caption" tone="faint" style={s.section}>
-            {busy ? '알람을 다시 예약하는 중…' : `바꾸면 알람이 전부 다시 예약돼요.${count != null ? ` 예약된 알람 ${count}개` : ''}`}
-          </T>
-        </View>
+
+          <DetoxCard />
+
+          <View style={{ gap: spacing.sm }}>
+            <T size="small" tone="sub" style={s.section}>시간</T>
+            <Card style={{ gap: spacing.sm }}>
+              <T size="small" tone="sub">하루 식사</T>
+              <View style={s.pills}>
+                {MEAL_PLANS.map((o) => (
+                  <Pill key={o.label} label={o.label} selected={(st.skip ?? null) === o.skip} onPress={() => save({ ...st, skip: o.skip })} />
+                ))}
+              </View>
+              <T size="caption" tone="faint">저녁은 탄수화물 규칙과 단식 시간에 맞춰져 있어서 빼지 않아요.</T>
+            </Card>
+            <Card style={s.list}>
+              {MEALS.filter((m) => m.key !== st.skip).map((m) => (
+                <View key={m.key}>
+                  <Row
+                    label={m.label}
+                    value={timeKo(st.meals[m.key])}
+                    onPress={() => pickTime(st.meals[m.key], (v) => save({ ...st, meals: { ...st.meals, [m.key]: v } }))}
+                  />
+                  <Divider />
+                </View>
+              ))}
+              <Row label="기본 단식 시작 시간" value={timeKo(st.fastStart)} onPress={() => pickTime(st.fastStart, (v) => save({ ...st, fastStart: v }))} />
+            </Card>
+            <T size="caption" tone="faint" style={s.section}>
+              {busy ? '알람을 다시 예약하는 중…' : `바꾸면 알람이 전부 다시 예약돼요.${count != null ? ` 예약된 알람 ${count}개` : ''}`}
+            </T>
+          </View>
+          </>
+        ) : (
+          <Card style={{ gap: spacing.md }}>
+            <T>아직 진행 중인 디톡스가 없어요. 시작하면 시작 날짜, 식사 시간, 단식 시간을 여기서 바꿀 수 있어요.</T>
+            <Button icon="play" label="디톡스 시작하기" onPress={() => router.push('/onboarding')} />
+          </Card>
+        )}
 
         <View style={{ gap: spacing.sm }}>
           <T size="small" tone="sub" style={s.section}>화면</T>
@@ -126,7 +136,7 @@ export default function SettingsScreen() {
         <View style={{ gap: spacing.sm }}>
           <T size="small" tone="sub" style={s.section}>알람 권한</T>
           <Card style={s.list}>
-            <PermLine label="알림" ok={notif} onFix={async () => { if (await requestNotificationPermission()) await save(st); refresh(); }} />
+            <PermLine label="알림" ok={notif} onFix={async () => { if ((await requestNotificationPermission()) && st) await save(st); refresh(); }} />
             <Divider />
             <PermLine label="정확한 시간 알람" ok={exact} onFix={async () => { await requestExactAlarmPermission(); refresh(); }} />
           </Card>
@@ -157,7 +167,7 @@ export default function SettingsScreen() {
 
         <Notice text={SAFETY_NOTICE} />
 
-        {SHOW_DEBUG ? <DebugCard /> : null}
+        {SHOW_DEBUG && st ? <DebugCard /> : null}
 
         <VersionCard />
       </ScrollView>
@@ -335,7 +345,7 @@ function DebugCard() {
         label="전체 초기화 (온보딩부터)"
         onPress={async () => {
           await app.resetAll();
-          router.replace('/onboarding');
+          router.replace('/today');
         }}
       />
       <T size="caption" tone="faint">날짜 이동은 화면에만 적용돼요. 알람은 실제 시간 기준이에요.</T>
