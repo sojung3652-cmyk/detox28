@@ -123,7 +123,7 @@ export function buildAlarms(inp: ScheduleInputs, now: Date, rand: () => number =
     const letterAt = new Date(breakfastAt.getTime() + LETTER_DELAY_MS);
 
     // Special-day letters: sent even on a fasting morning.
-    if (day === 1) drafts.push({ id: 'letter-day1', date: letterAt, kind: 'day1', day: dk });
+    // No day-1 letter: the start letter (시작하기) takes its place.
     if (day === 8) drafts.push({ id: 'letter-week2', date: letterAt, kind: 'week2Start', day: dk });
     if (day === 15) drafts.push({ id: 'letter-week3', date: letterAt, kind: 'week3Start', day: dk });
     if (day === 22) drafts.push({ id: 'letter-week4', date: letterAt, kind: 'week4Start', day: dk });
@@ -181,7 +181,7 @@ export function dMinus3Drafts(inp: ScheduleInputs, now: Date): Draft[] {
 }
 
 /**
- * Letters whose send time has already passed (day1, week starts, complete).
+ * Letters whose send time has already passed (D-3, week starts, complete).
  * Used to deliver letters that were never scheduled (e.g. onboarding finished after breakfast on day 1)
  * or never fired (phone off, alarm dropped). The caller skips ones already in the inbox.
  */
@@ -189,7 +189,6 @@ export function dueSpecialLetters(inp: ScheduleInputs, now: Date): AlarmSpec[] {
   const drafts: Draft[] = [];
   const at = (day: number) => new Date(atTime(dateOfDay(inp.startDate, day), inp.meals.breakfast).getTime() + LETTER_DELAY_MS);
   const fixed: [number, MessageKind, string][] = [
-    [1, 'day1', 'letter-day1'],
     [8, 'week2Start', 'letter-week2'],
     [15, 'week3Start', 'letter-week3'],
     [22, 'week4Start', 'letter-week4'],

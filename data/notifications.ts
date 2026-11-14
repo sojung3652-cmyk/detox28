@@ -56,6 +56,7 @@ export const MESSAGES = {
   start: [
     '즐거운 디톡스 여정의 시작! 28일간 더 멋진 나로 거듭나 보기로 해요, 저도 같이 할게요. 할 수 있다, 화이팅!',
   ],
+  // Not sent any more (replaced by the start letter); kept so old inbox entries still show.
   day1: [
     '즐거운 디톡스 플랜, 다시 시작하신 것을 축하합니다. 28일 디톡스 함께라면 걱정 없다! 같이 하루하루 즐겁게 해봐요, 화이팅!',
   ],

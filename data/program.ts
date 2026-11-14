@@ -65,9 +65,10 @@ const R = {
   oliveoil: { id: 'oliveoil', label: '올리브오일', detail: '하루 합계 5스푼' },
 } satisfies Record<string, RoutineItem>;
 
-const ROUTINE_W1 = [R.broccoli, R.greenbean, R.tomato, R.avocado, R.bellpepper, R.carrot, R.egg, R.tofu, R.natto, R.oliveoil];
-const ROUTINE_W2 = [R.broccoli, R.greenbean, R.tomato, R.avocado, R.cabbage, R.bellpepper, R.cucumber, R.carrot, R.egg, R.nuts, R.blueberry, R.natto, R.oliveoil];
-const ROUTINE_W3 = [...ROUTINE_W2.slice(0, 11), R.banana, R.apple, R.natto, R.oliveoil];
+// Tomato only from week 3 (the plan allows it from week 3).
+const ROUTINE_W1 = [R.broccoli, R.greenbean, R.avocado, R.bellpepper, R.carrot, R.egg, R.tofu, R.natto, R.oliveoil];
+const ROUTINE_W2 = [R.broccoli, R.greenbean, R.avocado, R.cabbage, R.bellpepper, R.cucumber, R.carrot, R.egg, R.nuts, R.blueberry, R.natto, R.oliveoil];
+const ROUTINE_W3 = [R.broccoli, R.greenbean, R.tomato, R.avocado, R.cabbage, R.bellpepper, R.cucumber, R.carrot, R.egg, R.nuts, R.blueberry, R.banana, R.apple, R.natto, R.oliveoil];
 const ROUTINE_W4 = [R.broccoli, R.greenbean, R.tomato, R.avocado, R.cabbage, R.bellpepper, R.carrot, R.egg, R.walnut, R.sweetpotato, R.berry, R.apple, R.natto, R.oliveoil];
 
 // ───────────────────────── 주차별 플랜 ─────────────────────────
@@ -103,7 +104,7 @@ export const WEEKS: WeekPlan[] = [
     snackPicks: ['요거트', '찐 닭가슴살', '생오이 + 쌈장'],
     title: '장내 환경 바꾸기',
     goal: '탄수화물을 줄이고 채소와 단백질로 몸을 리셋해요',
-    ingredients: ['브로콜리', '그린빈', '토마토', '아보카도', '파프리카', '당근', '달걀', '두부'],
+    ingredients: ['브로콜리', '그린빈', '아보카도', '파프리카', '당근', '달걀', '두부'],
     lowCarbDinnerDays: [0, 1, 2],
     fastDays: [],
     summary: '간헐적 단식 없음. 첫 3일은 탄수화물 제한, 4일째부터 점심 한 끼 밥 허용.',
@@ -125,7 +126,7 @@ export const WEEKS: WeekPlan[] = [
     title: '단식 시작',
     goal: '주 1회 24시간 단식에 적응해요',
     ingredients: [
-      '브로콜리', '그린빈', '토마토', '아보카도', '파프리카', '당근', '달걀', '두부',
+      '브로콜리', '그린빈', '아보카도', '파프리카', '당근', '달걀', '두부',
       '양배추', '오이', '견과류', '블루베리',
     ],
     lowCarbDinnerDays: [1, 3, 5],
@@ -144,7 +145,7 @@ export const WEEKS: WeekPlan[] = [
   {
     week: 3,
     routine: ROUTINE_W3,
-    routineWhy: '2주 동안 몸이 적응했으니 과일 탄수화물을 조금 늘려요. 바나나와 사과는 식이섬유가 있어서 단식 사이 에너지를 부드럽게 채워 줘요.',
+    routineWhy: '2주 동안 몸이 적응했으니 과일 탄수화물을 조금 늘려요. 이번 주부터 허용되는 토마토를 더하고, 바나나와 사과는 식이섬유가 있어서 단식 사이 에너지를 부드럽게 채워 줘요.',
     snackPicks: ['두유', '찐 고구마', '요거트 + 베리류', '찐 감자', '다크초콜릿 85% 이상', '아몬드밀크 + 바닐라 아이스크림'],
     title: '효과가 보이는 주',
     goal: '주 2회 단식, 몸이 가벼워지는 걸 느껴봐요',
@@ -224,7 +225,6 @@ export type ShoppingItem = { id: string; ko: string; en: string; section: string
 const BASE_SHOPPING: ShoppingItem[] = [
   { id: 'broccoli', ko: '브로콜리', en: 'broccoli crowns', section: '채소 · 과일 (Produce)' },
   { id: 'greenbean', ko: '그린빈', en: 'green beans', section: '채소 · 과일 (Produce)' },
-  { id: 'tomato', ko: '토마토', en: 'tomatoes / cherry tomatoes', section: '채소 · 과일 (Produce)' },
   { id: 'bellpepper', ko: '벨페퍼 (파프리카)', en: 'bell peppers', section: '채소 · 과일 (Produce)' },
   { id: 'carrot', ko: '당근', en: 'carrots', section: '채소 · 과일 (Produce)' },
   { id: 'avocado', ko: '아보카도', en: 'avocados', section: '채소 · 과일 (Produce)' },
@@ -256,6 +256,7 @@ export const SHOPPING: Record<1 | 2 | 3 | 4, ShoppingItem[]> = {
   ],
   3: [
     ...BASE_SHOPPING,
+    { id: 'tomato', ko: '토마토', en: 'tomatoes / cherry tomatoes', section: '채소 · 과일 (Produce)' },
     { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
     { id: 'banana', ko: '바나나', en: 'bananas', section: '채소 · 과일 (Produce)' },
     { id: 'apple', ko: '사과', en: 'apples (Honeycrisp, Fuji)', section: '채소 · 과일 (Produce)' },
@@ -268,6 +269,7 @@ export const SHOPPING: Record<1 | 2 | 3 | 4, ShoppingItem[]> = {
   ],
   4: [
     ...BASE_SHOPPING,
+    { id: 'tomato', ko: '토마토', en: 'tomatoes / cherry tomatoes', section: '채소 · 과일 (Produce)' },
     { id: 'cabbage', ko: '양배추', en: 'green cabbage', section: '채소 · 과일 (Produce)' },
     { id: 'apple', ko: '사과', en: 'apples', section: '채소 · 과일 (Produce)' },
     { id: 'sweet-potato', ko: '고구마', en: 'Japanese sweet potatoes', section: '채소 · 과일 (Produce)' },
