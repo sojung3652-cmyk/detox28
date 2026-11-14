@@ -39,6 +39,11 @@ type Ctx = Persisted & {
   setFastStart: (fastId: string, startMs: number | null) => Promise<void>;
   stopFast: (id: string) => Promise<void>;
   toggleShopping: (week: number, id: string) => void;
+  addMyShopping: (label: string) => void;
+  toggleMyShopping: (id: string) => void;
+  removeMyShopping: (id: string) => void;
+  /** Removes every checked item from his own list. */
+  clearMyShoppingDone: () => void;
   recordAction: (a: ParsedAction) => void;
   /** Moves letters whose time has passed from the outbox into the inbox. */
   syncInbox: () => Promise<void>;
@@ -215,6 +220,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const cur = s.shopping[week] ?? [];
           return { ...s, shopping: { ...s.shopping, [week]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] } };
         }),
+      addMyShopping: (label) => {
+        const t = label.trim();
+        if (!t) return;
+        update((s) => ({ ...s, myShopping: [...s.myShopping, { id: `my-${Date.now().toString(36)}`, label: t, done: false }] }));
+      },
+      toggleMyShopping: (id) => update((s) => ({ ...s, myShopping: s.myShopping.map((i) => (i.id === id ? { ...i, done: !i.done } : i)) })),
+      removeMyShopping: (id) => update((s) => ({ ...s, myShopping: s.myShopping.filter((i) => i.id !== id) })),
+      clearMyShoppingDone: () => update((s) => ({ ...s, myShopping: s.myShopping.filter((i) => !i.done) })),
       recordAction: (a) => update((s) => applyAction(s, a)),
       syncInbox,
       markLetters: (refs, patch) =>

@@ -27,6 +27,8 @@ export type Round = {
   meals: Record<string, string[]>;
 };
 
+export type MyShoppingItem = { id: string; label: string; done: boolean };
+
 export type Persisted = {
   settings: Settings | null;
   theme: ThemePref;
@@ -45,6 +47,7 @@ export type Persisted = {
   fastOverrides: Record<string, number>; // fast id → start epoch ms (today-only change / start now)
   stoppedFasts: string[];
   shopping: Record<string, string[]>; // week → checked shopping item ids
+  myShopping: MyShoppingItem[]; // his own everyday shopping list (리스트 추가), not tied to a week
   celebrated: number[]; // streak milestones already celebrated
   inbox: InboxEntry[]; // letters (alarm texts) received so far, oldest first
   alarmLog: Letter[]; // simple alarms that went off (for the 알림함 history), oldest first
@@ -72,6 +75,7 @@ export const EMPTY: Persisted = {
   fastOverrides: {},
   stoppedFasts: [],
   shopping: {},
+  myShopping: [],
   celebrated: [],
   inbox: [],
   alarmLog: [],
@@ -87,6 +91,7 @@ export function normalize(raw: unknown): Persisted {
   // The inbox keeps letters only: simple alarms saved by older versions are dropped (and so leave the popup queue).
   p.inbox = p.inbox.filter((e: { kind?: string }) => isLetterKind(e?.kind ?? ''));
   if (!Array.isArray(p.alarmLog)) p.alarmLog = [];
+  if (!Array.isArray(p.myShopping)) p.myShopping = [];
   if (typeof p.alertsSeenAt !== 'number') p.alertsSeenAt = 0;
   if (!Array.isArray(p.pauses)) p.pauses = [];
   if (!Array.isArray(p.history)) p.history = [];

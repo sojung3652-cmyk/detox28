@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 import { Ring } from '../../components/Ring';
 import { Badge, Button, Card, CardHeader, CheckRow, T, tapFeedback } from '../../components/ui';
 import { POST_FAST_NOTE, menusFor } from '../../data/menus';
-import { DINNER_LABEL, FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, WATER_GOAL } from '../../data/program';
+import { DINNER_LABEL, FAST_CHEERS, PROGRAM_DAYS, SAFETY_NOTICE, SHOPPING, WATER_GOAL } from '../../data/program';
 import { pickTime, timeKo } from '../../lib/pickers';
 import {
   Fast,
@@ -121,6 +121,28 @@ function Finished() {
   );
 }
 
+/** 오늘 탭의 장보기 바로가기: this week's list progress (+ his own list's open items). */
+function ShoppingRow({ week }: { week: number }) {
+  const { c } = useTheme();
+  const app = useApp();
+  const items = SHOPPING[week as 1 | 2 | 3 | 4] ?? [];
+  const done = (app.shopping[week] ?? []).filter((id) => items.some((i) => i.id === id)).length;
+  const mine = app.myShopping.filter((i) => !i.done).length;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="장보기 열기" onPress={() => router.push('/shopping')}>
+      <Card style={s.shopRow}>
+        <Icon name="cart" size={18} />
+        <T medium style={{ flex: 1 }}>{week}주차 장보기</T>
+        <T size="small" tone="sub">
+          {done} / {items.length}
+          {mine ? ` · 내 리스트 ${mine}` : ''}
+        </T>
+        <Icon name="right" size={18} color={c.faint} />
+      </Card>
+    </Pressable>
+  );
+}
+
 function InProgram({ day, now }: { day: number; now: Date }) {
   const { c } = useTheme();
   const app = useApp();
@@ -152,6 +174,8 @@ function InProgram({ day, now }: { day: number; now: Date }) {
       </View>
 
       <GoalCard week={plan.week} />
+
+      <ShoppingRow week={plan.week} />
 
       {showAdded ? (
         <Card style={s.notice}>
@@ -441,6 +465,7 @@ const s = StyleSheet.create({
   wrap: { padding: spacing.screen, gap: spacing.lg, paddingBottom: 48 },
   top: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, marginBottom: spacing.xs },
   bellTop: { alignSelf: 'flex-start' },
+  shopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
   goal: { borderRadius: radius.card, padding: spacing.xl, gap: spacing.sm },
   goalHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   times: { flexDirection: 'row', alignSelf: 'stretch', gap: spacing.md },
