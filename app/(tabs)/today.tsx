@@ -297,6 +297,7 @@ function FastCard({ day, now, inputs }: { day: number; now: Date; inputs: FastIn
   const fasts = activeFasts(inputs);
   const cur = fastAt(fasts, now);
   const today = fasts.find((f) => f.day === day && f.start > now);
+  const [restOpen, setRestOpen] = useState(false);
 
   // Today-only change: pick a new start time on the fast's own day. Alarms are rescheduled by the store.
   const changeTime = (f: Fast) =>
@@ -358,19 +359,24 @@ function FastCard({ day, now, inputs }: { day: number; now: Date; inputs: FastIn
 
   const next = nextFast(fasts, now);
   const meal = nextMeal(now, app.settings!.meals, app.settings!.skip);
+  // Folded by default to keep the today screen short.
   return (
     <Card style={{ gap: spacing.xl }}>
-      <CardHeader title="오늘은 단식 없는 날" icon="timer" />
-      <View style={{ gap: spacing.lg }}>
-        <View style={{ gap: spacing.xs }}>
-          <T size="small" tone="sub">다음 식사</T>
-          <T size="h1" medium>{meal.label} {timeKo(formatTime(meal.at))}</T>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: restOpen }} onPress={() => setRestOpen(!restOpen)}>
+        <CardHeader title="오늘은 단식 없는 날" icon="timer" right={<Icon name={restOpen ? 'down' : 'right'} size={18} color={c.faint} />} />
+      </Pressable>
+      {restOpen ? (
+        <View style={{ gap: spacing.lg }}>
+          <View style={{ gap: spacing.xs }}>
+            <T size="small" tone="sub">다음 식사</T>
+            <T size="h1" medium>{meal.label} {timeKo(formatTime(meal.at))}</T>
+          </View>
+          <View style={{ gap: spacing.xs }}>
+            <T size="small" tone="sub">다음 단식</T>
+            <T size="title">{next ? `${when(next.start, now)} 시작` : '남은 단식이 없어요'}</T>
+          </View>
         </View>
-        <View style={{ gap: spacing.xs }}>
-          <T size="small" tone="sub">다음 단식</T>
-          <T size="title">{next ? `${when(next.start, now)} 시작` : '남은 단식이 없어요'}</T>
-        </View>
-      </View>
+      ) : null}
     </Card>
   );
 }
