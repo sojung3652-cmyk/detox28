@@ -176,7 +176,7 @@ export function dMinus3Drafts(inp: ScheduleInputs, now: Date): Draft[] {
 }
 
 /**
- * Special-day letters whose send time has already passed (day1, week starts, complete, streaks).
+ * Letters whose send time has already passed (day1, week starts, complete).
  * Used to deliver letters that were never scheduled (e.g. onboarding finished after breakfast on day 1)
  * or never fired (phone off, alarm dropped). The caller skips ones already in the inbox.
  */
@@ -191,12 +191,6 @@ export function dueSpecialLetters(inp: ScheduleInputs, now: Date): AlarmSpec[] {
     [PROGRAM_DAYS, 'complete', 'letter-complete'],
   ];
   for (const [day, kind, id] of fixed) drafts.push({ id, date: at(day), kind, day: dateKey(dateOfDay(inp.startDate, day)) });
-  // Streak milestones reached on day D → letter on D+1.
-  for (let day = 1; day < PROGRAM_DAYS; day++) {
-    const run = runEndingOn(inp, dateOfDay(inp.startDate, day));
-    if ((STREAK_MILESTONES as readonly number[]).includes(run)) {
-      drafts.push({ id: `streak-${run}`, date: at(day + 1), kind: `streak${run}` as MessageKind, day: dateKey(dateOfDay(inp.startDate, day + 1)) });
-    }
-  }
+  // Streak alarms are simple alarms now: never re-delivered as letters.
   return assignTexts(drafts.filter((d) => d.date <= now));
 }

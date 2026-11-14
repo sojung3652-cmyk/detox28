@@ -1,6 +1,7 @@
 // Storage that works outside React too (notification action handlers, the home-screen widget),
 // so every writer goes through load → change → save on the same key.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isLetterKind } from '../data/notifications';
 import { DEFAULT_FAST_START, DEFAULT_MEAL_TIMES } from '../data/program';
 import type { ThemePref } from '../theme';
 import type { InboxEntry } from './letters';
@@ -79,6 +80,8 @@ export const EMPTY: Persisted = {
 export function normalize(raw: unknown): Persisted {
   const p = { ...EMPTY, ...(raw && typeof raw === 'object' ? (raw as Partial<Persisted>) : {}) };
   if (!Array.isArray(p.inbox)) p.inbox = [];
+  // The inbox keeps letters only: simple alarms saved by older versions are dropped (and so leave the popup queue).
+  p.inbox = p.inbox.filter((e: { kind?: string }) => isLetterKind(e?.kind ?? ''));
   if (!Array.isArray(p.pauses)) p.pauses = [];
   if (!Array.isArray(p.history)) p.history = [];
   setPauses(p.pauses); // every load path (app, widget, notification buttons) sees the same pauses

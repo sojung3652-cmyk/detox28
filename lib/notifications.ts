@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { MESSAGES, MessageKind } from '../data/notifications';
+import { MESSAGES, MessageKind, TYPES, isLetterKind } from '../data/notifications';
 import { Letter, lastKeysFrom, loadOutbox, saveOutbox } from './letters';
 import type { Persisted } from './persist';
 import { dateKey } from './plan';
@@ -77,8 +77,8 @@ export function scheduleInputs(st: Persisted): ScheduleInputs | null {
   };
 }
 
-/** Water alarms stay plain notifications: they are not kept as letters (no envelope popup, no inbox). */
-const isLetter = (a: AlarmSpec) => a.kind !== 'water';
+/** Only letters (TYPES = 'letter') go to the outbox → inbox; simple alarms are just notifications. */
+const isLetter = (a: AlarmSpec) => isLetterKind(a.kind);
 
 const toLetter = (a: AlarmSpec): Letter => ({ id: a.id, at: a.date.getTime(), kind: a.kind, key: a.key, text: a.text, special: a.special });
 
@@ -90,7 +90,7 @@ async function scheduleOne(a: AlarmSpec) {
       body: a.body,
       categoryIdentifier: a.category,
       // messageKey + text let the app show exactly the text this notification carried.
-      data: { id: a.id, at: a.date.getTime(), messageKey: a.key, kind: a.kind, text: a.text, special: a.special, day: a.day, meal: a.meal },
+      data: { id: a.id, at: a.date.getTime(), messageKey: a.key, kind: a.kind, type: TYPES[a.kind], text: a.text, special: a.special, day: a.day, meal: a.meal },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: a.date, channelId: CHANNEL_ID },
   });
@@ -123,27 +123,24 @@ export async function cancelAlarm(id: string) {
   if (ob.some((l) => l.id === id)) await saveOutbox(ob.filter((l) => l.id !== id));
 }
 
-/** Re-evaluates the streak letters after checks change: schedules a reached milestone, cancels a lost one. */
+/** Re-evaluates the streak alarms after checks change: schedules a reached milestone, cancels a lost one. */
 export async function syncStreakAlarms(st: Persisted) {
   const inp = scheduleInputs(st);
   if (!inp) return;
   const now = new Date();
   const want = assignTexts(streakDrafts(inp, now), inp.lastKeys);
-  const ob = await loadOutbox();
-  const existing = ob.filter((l) => l.id.startsWith('streak-'));
-  for (const l of existing) if (!want.some((w) => w.id === l.id)) await Notifications.cancelScheduledNotificationAsync(l.id).catch(() => {});
-  const keep = ob.filter((l) => !l.id.startsWith('streak-'));
-  const added: Letter[] = [];
-  for (const w of want) {
-    const same = existing.find((l) => l.id === w.id && l.at === w.date.getTime());
-    if (same) {
-      added.push(same);
-      continue;
-    }
-    if (await hasNotificationPermission()) await scheduleOne(w);
-    added.push(toLetter(w));
+  // Streak alarms are simple alarms (not in the outbox): read what is scheduled from the OS.
+  const reqs = await Notifications.getAllScheduledNotificationsAsync().catch(() => [] as Notifications.NotificationRequest[]);
+  const existing = reqs
+    .filter((r) => r.identifier.startsWith('streak-'))
+    .map((r) => ({ id: r.identifier, at: (r.content.data as { at?: number } | undefined)?.at }));
+  for (const l of existing) {
+    if (!want.some((w) => w.id === l.id && w.date.getTime() === l.at)) await Notifications.cancelScheduledNotificationAsync(l.id).catch(() => {});
   }
-  await saveOutbox([...keep, ...added]);
+  if (!(await hasNotificationPermission())) return;
+  for (const w of want) {
+    if (!existing.some((l) => l.id === w.id && l.at === w.date.getTime())) await scheduleOne(w);
+  }
 }
 
 export async function cancelAll() {
@@ -180,7 +177,7 @@ export async function sendAllKindsPreview(st: Persisted): Promise<Letter[]> {
   return specs.filter(isLetter).map(toLetter);
 }
 
-export type ScheduledRow = { id: string; kind: string; at: number | null; text: string };
+export type ScheduledRow = { id: string; kind: string; type: 'letter' | 'simple' | '-'; at: number | null; text: string };
 
 /** Debug: what is actually scheduled on the phone right now (from the OS), earliest first. */
 export async function listScheduled(): Promise<{ permission: boolean; exact: boolean; rows: ScheduledRow[] }> {
@@ -195,7 +192,7 @@ export async function listScheduled(): Promise<{ permission: boolean; exact: boo
   const rows = reqs
     .map((r) => {
       const d = (r.content.data ?? {}) as { kind?: string; at?: number; text?: string };
-      return { id: r.identifier, kind: d.kind ?? '-', at: typeof d.at === 'number' ? d.at : null, text: d.text ?? r.content.body ?? '' };
+      return { id: r.identifier, kind: d.kind ?? '-', type: (d.kind && TYPES[d.kind as MessageKind]) || ('-' as const), at: typeof d.at === 'number' ? d.at : null, text: d.text ?? r.content.body ?? '' };
     })
     .sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
   return { permission, exact, rows };

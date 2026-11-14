@@ -6,7 +6,7 @@
 // time has passed are moved into the INBOX. That way the inbox is complete even if a notification
 // was swiped away, and the app shows exactly the text the notification carried.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { MessageKind } from '../data/notifications';
+import { MessageKind, isLetterKind } from '../data/notifications';
 
 export type Letter = {
   id: string; // alarm id, e.g. "water-12-1"
@@ -28,7 +28,8 @@ export async function loadOutbox(): Promise<Letter[]> {
   try {
     const raw = await AsyncStorage.getItem(OUTBOX_KEY);
     const v = raw ? JSON.parse(raw) : [];
-    return Array.isArray(v) ? v : [];
+    // Only letters live in the outbox (older versions also kept simple alarms there).
+    return Array.isArray(v) ? v.filter((l) => isLetterKind(l?.kind)) : [];
   } catch {
     return [];
   }

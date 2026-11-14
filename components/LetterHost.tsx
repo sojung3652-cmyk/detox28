@@ -2,6 +2,8 @@ import * as Notifications from 'expo-notifications';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, Modal, Platform, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import { isLetterKind } from '../data/notifications';
 import { InboxEntry, letterRef, popupQueue } from '../lib/letters';
 import { useApp } from '../lib/store';
 import { envelope as E } from '../theme';
@@ -47,8 +49,15 @@ export function LetterHost({ children }: { children: React.ReactNode }) {
     if (Platform.OS === 'web') return;
     const openFrom = async (res: Notifications.NotificationResponse | null) => {
       if (!res || res.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-      const data = res.notification.request.content.data as { id?: string; at?: number } | undefined;
+      const data = res.notification.request.content.data as { id?: string; at?: number; kind?: string } | undefined;
       if (!data?.id) return;
+      // Simple alarms: no envelope, straight to the today screen.
+      if (!isLetterKind(data.kind ?? '')) {
+        try {
+          router.navigate('/today');
+        } catch {} // cold start: the app opens on the today screen anyway
+        return;
+      }
       await appRef.current.syncInbox();
       const hit = [...appRef.current.inbox].reverse().find((e) => e.id === data.id);
       if (hit && hit.popped) setQueue((cur) => [hit, ...cur.filter((x) => letterRef(x) !== letterRef(hit))].slice(0, 3));

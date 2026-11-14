@@ -286,7 +286,7 @@ function ScheduledList() {
           {data.rows.length === 0 ? <T size="caption" tone="faint">예약된 알람이 없어요. 알림 권한이 꺼져 있으면 예약되지 않아요.</T> : null}
           {rows.map((r) => (
             <T key={r.id} size="caption" numberOfLines={1}>
-              {fmt(r.at)} · {r.kind} · {r.text.slice(0, 24)}
+              {fmt(r.at)} · {r.type === 'letter' ? '편지' : r.type === 'simple' ? '단순' : '-'} · {r.kind} · {r.text.slice(0, 24)}
             </T>
           ))}
           {data.rows.length > 20 ? <Pill label={all ? '접기' : `전체 ${data.rows.length}개 보기`} onPress={() => setAll(!all)} /> : null}

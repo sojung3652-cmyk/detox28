@@ -93,8 +93,39 @@ export const MESSAGES = {
 
 export type MessageKind = keyof typeof MESSAGES;
 
-/** 특별한 날 알람: 알림창엔 내용 없이 편지 도착만 알려요. */
-export const SPECIAL: MessageKind[] = ['start', 'day1', 'week2Start', 'week3Start', 'week4Start', 'complete', 'streak7', 'streak14', 'streak21'];
+/**
+ * 알람 종류별 type
+ *  - letter: 편지. 알림창엔 "편지가 도착했어요"만 보이고, 앱에서 봉투로 열어요. 받은 편지함에 남아요.
+ *  - simple: 단순 알람. 알림창에 문구가 그대로 보이고, 누르면 오늘 화면으로 가요. 편지함에 남지 않아요.
+ * (start는 알람이 아니라 '시작하기'를 누르는 순간 앱 안에서 바로 열리는 편지예요.)
+ */
+export const TYPES: Record<MessageKind, 'letter' | 'simple'> = {
+  breakfast: 'simple',
+  lunch: 'simple',
+  dinnerNoCarb: 'simple',
+  dinnerNormal: 'simple',
+  week1Day4Lunch: 'simple',
+  water: 'simple',
+  fastStart: 'simple',
+  fastEnd: 'simple',
+  fastTomorrow: 'simple',
+  start: 'letter',
+  day1: 'letter',
+  week2Start: 'letter',
+  week3Start: 'letter',
+  week4Start: 'letter',
+  complete: 'letter',
+  streak7: 'simple',
+  streak14: 'simple',
+  streak21: 'simple',
+  dMinus3: 'simple',
+  noCheckToday: 'simple',
+};
+
+export const isLetterKind = (k: string): boolean => TYPES[k as MessageKind] === 'letter';
+
+/** 편지 종류 (알림창엔 내용 없이 편지 도착만 알려요) */
+export const SPECIAL: MessageKind[] = (Object.keys(TYPES) as MessageKind[]).filter((k) => TYPES[k] === 'letter');
 
 export const SPECIAL_NOTICE = { title: '편지가 도착했어요', body: '열어서 확인해보세요' };
 
@@ -117,9 +148,9 @@ export const TITLES: Record<MessageKind, string> = {
   week3Start: SPECIAL_NOTICE.title,
   week4Start: SPECIAL_NOTICE.title,
   complete: SPECIAL_NOTICE.title,
-  streak7: SPECIAL_NOTICE.title,
-  streak14: SPECIAL_NOTICE.title,
-  streak21: SPECIAL_NOTICE.title,
+  streak7: '연속 7일 달성',
+  streak14: '연속 14일 달성',
+  streak21: '연속 21일 달성',
 };
 
 /** 편지지 위 작은 글씨 (알람 종류) */
@@ -141,9 +172,9 @@ export const LABELS: Record<MessageKind, string> = {
   week3Start: '3주차 시작 편지',
   week4Start: '4주차 시작 편지',
   complete: '28일 완주 편지',
-  streak7: '연속 7일 편지',
-  streak14: '연속 14일 편지',
-  streak21: '연속 21일 편지',
+  streak7: '연속 7일 달성',
+  streak14: '연속 14일 달성',
+  streak21: '연속 21일 달성',
 };
 
 /** 알림 버튼 이름 */
